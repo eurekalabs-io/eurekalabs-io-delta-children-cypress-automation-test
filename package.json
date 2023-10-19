@@ -1,4 +1,27 @@
 {
+  "name": "delta-children",
+  "version": "1.0.0",
+  "description": "E2E Framework Delta Children",
+  "main": "index.js",
+  "scripts": {
+    "test": "Automation",
+    "cypress:open": "cypress open"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PilarTorres89/Delta-Children.git"
+  },
+  "keywords": [
+    "QA",
+    "Automation",
+    "Cypress"
+  ],
+  "author": "Pilar Torres",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PilarTorres89/Delta-Children/issues"
+  },
+  "homepage": "https://github.com/PilarTorres89/Delta-Children#readme",
   "devDependencies": {
     "cypress": "^13.3.2"
   }
