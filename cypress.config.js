@@ -2,8 +2,11 @@ const { defineConfig } = require("cypress");
 
 module.exports = defineConfig({
   e2e: {
-    setupNodeEvents(on, config) {
-      // implement node event listeners here
+    watchForFileChanges: false,
+    setupNodeEvents(on, config) {},
+    baseUrl: 'https://www.deltachildren.com/'
     },
-  },
+    defaultCommandTimeout: 15000,
+    chromeWebSecurity: false 
 });
+
