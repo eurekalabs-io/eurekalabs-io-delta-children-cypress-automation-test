@@ -29,20 +29,8 @@ export default class CheckoutPage extends BasePage {
     cy.get(submitBtn).contains(`${label}`).click({ force: true });
   }
 
-  static selectCOD() {
-    cy.get(checkoutradioBtn).eq(1).click({ force: true });
-  }
-
-  static selectCC() {
-    cy.get(checkoutradioBtn).eq(0).click({ force: true });
-  }
-
   static selectOneTimePurchase() {
     cy.get('.cart-item__subscribe-button').eq(0).click({ force: true });
-  }
-
-  static selectSubscription() {
-    cy.get('.cart-item__subscribe-button').eq(1).click({ force: true });
   }
 
   static clickCartNextBtn() {

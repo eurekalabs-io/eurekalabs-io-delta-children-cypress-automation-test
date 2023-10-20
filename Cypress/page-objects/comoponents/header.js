@@ -2,8 +2,8 @@ import BasePage from '../BasePage';
 
 export default class Header extends BasePage {
   static menu = 'Menu';
-  static cart = '#cart-button';
-  static sidemenu = '.side-menu-container';
+  static cart = '.js-open-mini-cart';
+  static sidemenu = '.site-header__wrapper--top > :nth-child(1)';
 
   static clickMenu() {
     cy.get(`[alt="${this.menu}"]`).click({ force: true });
@@ -17,7 +17,4 @@ export default class Header extends BasePage {
     cy.get(this.cart).click();
   }
 
-  static verifyCartCount(number) {
-    cy.get(this.cart).should('contain.text', number);
-  }
 }
