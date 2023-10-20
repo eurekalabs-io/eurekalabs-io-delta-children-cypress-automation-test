@@ -2,9 +2,8 @@ import BasePage from '../BasePage';
 import Header from './header';
 
 export default class NavBar extends BasePage {
-  static allProducts = '.all-collections';
   static Nursery = '.all-collections__nursery';
-  static subcategory= '.navigation-mega-subitem-wrapper > :nth-child(1)';
+  static subcategory= '#nursery > .navigation-mobile__scroll-wrapper > .navigation-mega-subitem-wrapper > :nth-child(1)';
 
   static loadAllProducts() {
     Header.clickMenu();
