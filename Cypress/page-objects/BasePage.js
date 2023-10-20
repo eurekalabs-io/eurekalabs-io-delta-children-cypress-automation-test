@@ -12,7 +12,7 @@ export default class BasePage {
     }
   
     static setMobileViewport() {
-      cy.viewport('iphone-x');
+      cy.viewport('iphone-12-Pro');
     }
   
     static setTableViewport() {
