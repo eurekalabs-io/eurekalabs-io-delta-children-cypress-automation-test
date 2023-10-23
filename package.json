@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/PilarTorres89/Delta-Children#readme",
   "devDependencies": {
-    "cypress": "^13.3.2"
+    "cypress": "^13.3.2",
+    "cypress-if": "^1.10.5"
   }
 }

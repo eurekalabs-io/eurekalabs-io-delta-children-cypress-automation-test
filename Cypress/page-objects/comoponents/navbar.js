@@ -1,10 +1,9 @@
 import BasePage from '../BasePage';
-import Header from './header';
 
 export default class NavBar extends BasePage {
   static menu = '.site-header__wrapper--top > :nth-child(1)';
   static optionMenuCat = ':nth-child(2) > .navigation-mobile__nav-list >';
-  static optionMenuSubCat = '#nursery > .navigation-mobile__scroll-wrapper > .navigation-mega-subitem-wrapper >';
+  static optionMenuSubCat = '.navigation-mobile__scroll-wrapper > .navigation-mega-subitem-wrapper >';
 
   static clickMenu() {
     cy.get(this.menu).click();
