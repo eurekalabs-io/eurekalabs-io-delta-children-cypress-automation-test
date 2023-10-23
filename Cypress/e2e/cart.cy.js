@@ -1,27 +1,32 @@
 /// <reference types="cypress" />
 Cypress.on('uncaught:exception', () => { return false })
 
+// Hide fetch/XHR requests
+const app = window.top;
+if (!app.document.head.querySelector('[data-hide-command-log-request]')) {
+  const style = app.document.createElement('style');
+  style.innerHTML =
+    '.command-name-request, .command-name-xhr { display: none }';
+  style.setAttribute('data-hide-command-log-request', '');
+  app.document.head.appendChild(style);
+}
+
+// Imports
 import BasePage from '../page-objects/BasePage';
-import Header from '../page-objects/comoponents/header';
+import NavBar from '../page-objects/comoponents/navbar';
+import CartPage from '../page-objects/pages /CartPage';
+import ProductDetailsPage from '../page-objects/pages /ProductDetailsPage';
 
 
   it('visit the page', () => {
-    let countOfElements = 0
     cy.visit('https://www.deltachildren.com/')
-    Header.clickMenu()
-    Header.clickMenuCategory('Nursery')
-    Header.clickMenuSubCategory('Nursery Sets')
-    Header.selectFirstBundle()
+    NavBar.clickMenu()
+    NavBar.clickMenuCategory('Nursery')
+    NavBar.clickMenuSubCategory('Nursery Sets')
+    ProductDetailsPage.selectFirstBundle()
     BasePage.pause(1000)
-    cy.get('div.cb-bundle-layout__left > div.section-slider > div > div:nth-child(1) >').then($elements => {
-    countOfElements = $elements.length;
-    for (let cuenta = 1; cuenta <= countOfElements; cuenta++) {
-      cy.get(`.components-section > :nth-child(1) > :nth-child(${cuenta}) > .cb-product-list-item-content`).click()
-      cy.get('.components-section > :nth-child(1) > .cb-customizer-wrapper > .cb-customizer > .cb-customizer-footer > .v2-button--primary').click()
-      Header.pause(1000)
-    }
-  });
-    cy.get('.cb-bundle-layout__left > .cb-cart > .cb-tooltip-wrapper > #bundle-add-to-cart').click()
-    cy.get(':nth-child(1) > .cb-addons-variant > :nth-child(4) > .v2-button').click()
-    cy.get('.cb-addons-header__section-right > .d-flex > .v2-button').click()
+    ProductDetailsPage.selectVariants()
+    ProductDetailsPage.bundleAddCart()
+    CartPage.selectAddOns()
+    CartPage.proceedToCart()
   });

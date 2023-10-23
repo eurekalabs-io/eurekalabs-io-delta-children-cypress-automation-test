@@ -2,23 +2,19 @@ import BasePage from '../BasePage';
 import Header from './header';
 
 export default class NavBar extends BasePage {
-  static Nursery = '.all-collections__nursery';
-  static subcategory= '#nursery > .navigation-mobile__scroll-wrapper > .navigation-mega-subitem-wrapper > :nth-child(1)';
+  static menu = '.site-header__wrapper--top > :nth-child(1)';
+  static optionMenuCat = ':nth-child(2) > .navigation-mobile__nav-list >';
+  static optionMenuSubCat = '#nursery > .navigation-mobile__scroll-wrapper > .navigation-mega-subitem-wrapper >';
 
-  static loadAllProducts() {
-    Header.clickMenu();
-    Header.clickMenuCategory ('Nursery');
-    cy.get(this.Nursery).should('have.length', 60);
-  
+  static clickMenu() {
+    cy.get(this.menu).click();
   }
 
-  static selectCategory(category) {
-    cy.get(this.Nursery).contains(category).click({ force: true });
+  static clickMenuCategory(cat) {
+    cy.get(this.optionMenuCat).contains(cat).click();
   }
 
-  static clickNavSubCategory(subcategory) {
-    cy.get(this.subcategory).within(() => {
-      cy.get(`[alt="${subcategory}"]`).click();
-    });
+  static clickMenuSubCategory(subCat) {
+    cy.get(this.optionMenuSubCat).contains(subCat).click();
   }
 }

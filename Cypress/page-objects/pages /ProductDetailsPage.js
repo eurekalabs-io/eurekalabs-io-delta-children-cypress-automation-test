@@ -1,27 +1,28 @@
 import BasePage from '../BasePage';
 
 export default class ProductDetailsPage extends BasePage {
-  static productInfo = '.info-title';
-  static addDiaperBtn = '#add-diaper';
-  static addWipeBtn = '#add-wipe';
+  static selectBundle = ':nth-child(2) > .v2-container > .js-bundle-list-container > :nth-child(1) > .js-bundle-product-item > .align-items-center > .col-md-5 > .js-variant-url'
+  static addToCart = '.cb-bundle-layout__left > .cb-cart > .cb-tooltip-wrapper > #bundle-add-to-cart'
+  static addVariant = '.components-section > :nth-child(1) > .cb-customizer-wrapper > .cb-customizer > .cb-customizer-footer > .v2-button--primary'
+  static countVariant = 'div.cb-bundle-layout__left > div.section-slider > div > div:nth-child(1) >'
 
-  static isProductLoaded() {
-    cy.get(this.productInfo, { timeout: 10000 }).should('be.visible');
+  static selectFirstBundle() {
+    cy.get(this.selectBundle).click()
   }
 
-  static addDiaper() {
-    cy.get(this.addDiaperBtn).click({ force: true });
+  static selectVariants() {
+    let countOfElements = 0;
+    cy.get(this.countVariant).then($elements => {
+      countOfElements = $elements.length;
+      for (let cuenta = 1; cuenta <= countOfElements; cuenta++) {
+        cy.get(`.components-section > :nth-child(1) > :nth-child(${cuenta}) > .cb-product-list-item-content`).click()
+        cy.get(this.addVariant).click()
+        BasePage.pause(1000)
+      }
+    });
   }
 
-  static addWipe() {
-    cy.get(this.addWipeBtn).click({ force: true });
-  }
-
-  static invokeProductNameText() {
-    cy.get(this.productName).invoke('text').as('expectedName');
-  }
-
-  static invokeProductPriceText() {
-    cy.get(this.productPrice).invoke('text').as('expectedPrice');
+  static bundleAddCart() {
+    cy.get(this.addToCart).click()
   }
 }

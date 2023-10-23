@@ -1,15 +1,15 @@
 import BasePage from '../BasePage';
 
 export default class CartPage extends BasePage {
-  static load() {
-    cy.visit('/cart');
+  static firstAddOn = ':nth-child(1) > .cb-addons-variant > :nth-child(4) > .v2-button';
+  static addToProceed = '.cb-addons-header__section-right > .d-flex > .v2-button';
+
+  static selectAddOns() {
+    cy.get(this.firstAddOn).click()
+    BasePage.pause(1000)
   }
 
-  static isLoaded() {
-    cy.url().should('eq', 'https://www.deltachildren.com/cart');
-  }
-  static clickNext() {
-    const nextBtn = '#cart_nextButton';
-    cy.get(nextBtn).click({ force: true });
+  static proceedToCart() {
+    cy.get(this.addToProceed).click()
   }
 }
