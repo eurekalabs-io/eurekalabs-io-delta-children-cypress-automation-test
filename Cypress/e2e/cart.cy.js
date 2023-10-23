@@ -1,4 +1,6 @@
 /// <reference types="cypress" />
+
+// Hide TypeError
 Cypress.on('uncaught:exception', () => { return false })
 
 // Hide fetch/XHR requests
