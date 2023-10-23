@@ -23,7 +23,7 @@ import ProductDetailsPage from '../page-objects/pages /ProductDetailsPage';
     NavBar.clickMenu()
     NavBar.clickMenuCategory('Nursery')
     NavBar.clickMenuSubCategory('Nursery Sets')
-    ProductDetailsPage.selectFirstBundle()
+    ProductsList.selectFirstBundle()
     BasePage.pause(1000)
     ProductDetailsPage.selectVariants()
     ProductDetailsPage.bundleAddCart()
