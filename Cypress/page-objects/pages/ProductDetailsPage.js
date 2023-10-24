@@ -4,7 +4,7 @@ export default class ProductDetailsPage extends BasePage {
   static addToCart = '.cb-bundle-layout__left > .cb-cart > .cb-tooltip-wrapper > #bundle-add-to-cart'
   static addVariant = '.components-section > :nth-child(1) > .cb-customizer-wrapper > .cb-customizer > .cb-customizer-footer > .v2-button--primary'
   static countVariant = 'div.cb-bundle-layout__left > div.section-slider > div > div:nth-child(1) >'
-
+  
 
 
   static selectVariants() {
