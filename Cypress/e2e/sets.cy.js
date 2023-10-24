@@ -37,6 +37,7 @@ it('visit the page', () => {
     CartPage.selectAddOns()
     CartPage.proceedToCart()
     BasePage.pause(3000)
+    
   })
 
 });

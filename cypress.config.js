@@ -7,6 +7,7 @@ module.exports = defineConfig({
     baseUrl: 'https://www.deltachildren.com/'
     },
     defaultCommandTimeout: 15000,
-    chromeWebSecurity: false 
+    chromeWebSecurity: false,
+    projectId: "4sxpcp",
 });
 
