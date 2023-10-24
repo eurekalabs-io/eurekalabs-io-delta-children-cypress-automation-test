@@ -8,8 +8,10 @@ export default class CartPage extends BasePage {
     cy.get(this.firstAddOn).click()
     BasePage.pause(1000)
   }
-
+  
   static proceedToCart() {
     cy.get(this.addToProceed).click()
+
+  
   }
 }
