@@ -22,21 +22,19 @@ jobs:
           reporter: mochawesome
           reporterOptions: '{"reportDir": "results"}'
           env:
-            # Set the CYPRESS_ON_UNCAUGHT_EXCEPTION variable
-            CYPRESS_ON_UNCAUGHT_EXCEPTION: |
-              Cypress.on('uncaught:exception', () => {
-                return false;
-              })
-          env:
-             CYPRESS_APP_SCRIPT: |
-               const app = window.top;
-          if (!app.document.head.querySelector('[data-hide-command-log-request]')) {
-              const style = app.document.createElement('style');
-          style.innerHTML =
-          '.command-name-request, .command-name-xhr { display: none }';
-          style.setAttribute('data-hide-command-log-request', '');
-          app.document.head.appendChild(style);
-          
+  CYPRESS_ON_UNCAUGHT_EXCEPTION: |
+    Cypress.on('uncaught:exception', () => {
+      return false;
+    })
+  CYPRESS_APP_SCRIPT: |
+    const style = document.createElement('style');
+    style.innerHTML = `
+      [data-hide-command-log-request] {
+        display: none;
+      }
+    `;
+    app.document.head.appendChild(style);
+
       
          
 
