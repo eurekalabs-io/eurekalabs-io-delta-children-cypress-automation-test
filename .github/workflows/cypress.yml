@@ -1,28 +1,29 @@
-name: Sets 
+name: Automation-Delta-Children
 on:
  schedule:
     - cron: '0 11 * * 1-5'
 
 jobs:
- cypress-run:
+  cypress-run:
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        containers: [1, 2]
+    container: cypress/base:12.0.0-libgbm
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
       - name: Cypress run
-        uses: cypress-io/github-action@v4
+        run: npm run cypress:run
+      - name: Cypress report
+        uses: cypress-io/github-action@v3
         with:
-          wait-on: 'https://www.deltachildren.com/'
-          browser: chrome
-          record: true
-          parallel: true
-        env:
-          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          commands: report
+          build: 'Cypress info'
+          start: npm start
+          wait-on: 'http://localhost:3000'
+          spec: 'cypress/integration/07-ci/*'
+          reporter: mochawesome
+          reporterOptions: '{"reportDir": "results"}'
+
+          
 
 
 
