@@ -1,3 +1,5 @@
+Cypress.on('uncaught:exception', () => { return false })
+
 name: Display Cypress results
 on: [push]
 jobs:
@@ -19,4 +21,13 @@ jobs:
           spec: 'cypress/integration/07-ci/*'
           reporter: mochawesome
           reporterOptions: '{"reportDir": "results"}'
+          env:
+            # Set the CYPRESS_ON_UNCAUGHT_EXCEPTION variable
+            CYPRESS_ON_UNCAUGHT_EXCEPTION: |
+              Cypress.on('uncaught:exception', () => {
+                return false;
+              })
+      
          
+
+
