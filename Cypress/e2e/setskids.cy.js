@@ -3,7 +3,6 @@
 // Hide TypeError
 Cypress.on('uncaught:exception', () => { return false })
 
-
 // Hide fetch/XHR requests
 const app = window.top;
 if (!app.document.head.querySelector('[data-hide-command-log-request]')) {
@@ -24,7 +23,7 @@ import ProductsList from '../page-objects/pages/ProductsList';
 // Data
 const sets=require('../fixtures/SetProducts.json')
 
-it('add to cart bundle ', () => {
+it('visit the page', () => {
   cy.visit('https://www.deltachildren.com/')
   
   sets.forEach(data=>{
@@ -42,3 +41,17 @@ it('add to cart bundle ', () => {
   })
 
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
