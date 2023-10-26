@@ -11,7 +11,5 @@ export default class CartPage extends BasePage {
   
   static proceedToCart() {
     cy.get(this.addToProceed).click()
-
-  
   }
 }
