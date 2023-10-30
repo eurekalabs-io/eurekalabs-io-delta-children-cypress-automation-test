@@ -23,6 +23,7 @@ import ProductsList from '../page-objects/pages/ProductsList';
 
 // Data
 const sets=require('../fixtures/SetProducts.json')
+const sets=requiere('../fixture/Support.json')
 
 it('add to cart bundle ', () => {
   cy.visit('https://www.deltachildren.com/')
