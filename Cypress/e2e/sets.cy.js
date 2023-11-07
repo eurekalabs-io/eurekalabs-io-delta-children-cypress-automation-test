@@ -33,7 +33,7 @@ beforeEach(() => {
 });
 
 it("select nursery sets", () => {
-  for (let i = 1; i <= 1; i++) {
+  for (let i = 1; i <= 6; i++) {
     sets.forEach((data) => {
       NavBar.clickMenu();
       NavBar.clickMenuCategory(data.category);
