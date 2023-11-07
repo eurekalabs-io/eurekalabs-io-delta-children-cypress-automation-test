@@ -25,24 +25,26 @@ import ProductsList from "../page-objects/pages/ProductsList";
 // Data
 const sets = require("../fixtures/NurserySets.json");
 
-beforeEach(()=>{
-  cy.visit("https://www.deltachildren.com/")
-})
+beforeEach(() => {
+  cy.visit("https://www.deltachildren.com/");
+  /*   BasePage.pause(50000);
+  cy.get('[data-testid="klaviyo-form-UDwgQd"]').type("{esc}");
+ */
+});
 
 it("select nursery sets", () => {
-
-  sets.forEach((data) => {
-    NavBar.clickMenu();
-    NavBar.clickMenuCategory(data.category);
-    NavBar.clickMenuSubCategory(data.subcategory);
-    ProductsList.selectBundle();
-    BasePage.pause(1000);
-    ProductDetailsPage.selectVariants();
-    ProductDetailsPage.bundleAddCart();
-    CartPage.selectAddOns();
-    //CartPage.proceedToCart();
-    BasePage.pause(3000);
-
-  });
-
+  for (let i = 1; i <= 1; i++) {
+    sets.forEach((data) => {
+      NavBar.clickMenu();
+      NavBar.clickMenuCategory(data.category);
+      NavBar.clickMenuSubCategory(data.subcategory);
+      ProductsList.selectBundle(i);
+      BasePage.pause(1000);
+      ProductDetailsPage.selectVariants();
+      ProductDetailsPage.bundleAddCart();
+      CartPage.selectAddOns();
+      CartPage.proceedToCart();
+      BasePage.pause(3000);
+    });
+  }
 });
