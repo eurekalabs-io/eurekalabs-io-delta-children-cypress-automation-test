@@ -5,6 +5,7 @@ Cypress.on("uncaught:exception", () => {
   return false;
 });
 
+
 // Hide fetch/XHR requests
 const app = window.top;
 if (!app.document.head.querySelector("[data-hide-command-log-request]")) {
@@ -25,11 +26,11 @@ import ProductsList from "../page-objects/pages/ProductsList";
 // Data
 const sets = require("../fixtures/NurserySets.json");
 
+
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/");
     BasePage.pause(50000);
   cy.get('[data-testid="klaviyo-form-UDwgQd"]').type("{esc}");
-
 });
 
 it("select nursery sets", () => {
