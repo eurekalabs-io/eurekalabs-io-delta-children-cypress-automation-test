@@ -27,9 +27,9 @@ const sets = require("../fixtures/NurserySets.json");
 
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/");
-  /*   BasePage.pause(50000);
+    BasePage.pause(50000);
   cy.get('[data-testid="klaviyo-form-UDwgQd"]').type("{esc}");
- */
+
 });
 
 it("select nursery sets", () => {
