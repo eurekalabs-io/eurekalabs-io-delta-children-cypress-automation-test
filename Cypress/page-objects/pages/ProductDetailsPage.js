@@ -12,7 +12,7 @@ export default class ProductDetailsPage extends BasePage {
     cy.get(this.countVariant).then($elements => {
       countOfElements = $elements.length;
       for (let cuenta = 1; cuenta <= countOfElements; cuenta++) {
-        cy.get(`.components-section > :nth-child(1) > :nth-child(${cuenta}) > .cb-product-list-item-content`).click()
+        cy.get(`.components-section > :nth-child(1) > :nth-child(${cuenta}) > .cb-product-list-item-content`).click({force:true})
         cy.get(this.addVariant).click()
         BasePage.pause(1000)
       }

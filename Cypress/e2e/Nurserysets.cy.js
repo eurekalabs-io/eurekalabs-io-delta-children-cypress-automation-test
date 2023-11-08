@@ -26,7 +26,6 @@ import ProductsList from "../page-objects/pages/ProductsList";
 // Data
 const sets = require("../fixtures/NurserySets.json");
 
-
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/");
     BasePage.pause(50000);
@@ -45,7 +44,7 @@ it("select nursery sets", () => {
       ProductDetailsPage.bundleAddCart();
       CartPage.selectAddOns();
       CartPage.proceedToCart();
-      BasePage.pause(3000);
+      BasePage.pause(5000);
     });
   }
 });
