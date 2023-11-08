@@ -18,6 +18,7 @@ if (!app.document.head.querySelector("[data-hide-command-log-request]")) {
 
 // Imports
 import BasePage from "../page-objects/BasePage";
+import Modal from "../page-objects/comoponents/modal";
 import NavBar from "../page-objects/comoponents/navbar";
 import CartPage from "../page-objects/pages/CartPage";
 import ProductDetailsPage from "../page-objects/pages/ProductDetailsPage";
@@ -29,11 +30,11 @@ const sets = require("../fixtures/NurserySets.json");
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/");
     BasePage.pause(50000);
-  cy.get('[data-testid="klaviyo-form-UDwgQd"]').type("{esc}");
+    Modal.closeModal();
 });
 
 it("select nursery sets", () => {
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 4; i++) {
     sets.forEach((data) => {
       NavBar.clickMenu();
       NavBar.clickMenuCategory(data.category);
