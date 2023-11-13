@@ -11,16 +11,18 @@ jobs:
         containers: [1, 2] # Uses 2 parallel instances
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
       - name: Cypress run
-        uses: cypress-io/github-action@v6
+        uses: cypress-io/github-action@v4
         with:
           wait-on: 'https://www.deltachildren.com/' # Waits for above
           browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
         env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
 
         
