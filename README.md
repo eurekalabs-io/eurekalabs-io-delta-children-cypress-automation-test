@@ -45,6 +45,7 @@ To execute Cypress type
 
 ```
 npm run cy:open
+npx cypress open
 ```
 
 This will get the Cypress UI opened. Pick E2E Testing and choose a browser (Chrome or Electron were mainly used for this framework)
