@@ -51,6 +51,7 @@ npx cypress open
 This will get the Cypress UI opened. Pick E2E Testing and choose a browser (Chrome or Electron were mainly used for this framework)
 The spec files containing the tests are placed within the cypress/e2e folder:
 
+![Uploading Captura de pantalla 2024-05-02 a la(s) 12.02.48 p. m..png…]()
 
 
 ## POM Structure
