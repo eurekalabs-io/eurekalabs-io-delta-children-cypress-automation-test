@@ -8,5 +8,6 @@ export default class Modal extends BasePage {
     cy.get('#delta-children > div > div > div > div > div > div > div > form > div > div > div > button').click();
   }
 }
+//prueba subida a github los cambios
 
 //cy.get('#delta-children > div> div > div > div > div > div > div > button > svg > circle').click({force:true});
