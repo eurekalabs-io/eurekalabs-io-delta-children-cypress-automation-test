@@ -29,7 +29,7 @@ const sets = require("../fixtures/NurserySets.json");
 
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/");
-    BasePage.pause(50000);
+    BasePage.pause(500);
     Modal.closeModal();
 });
 
