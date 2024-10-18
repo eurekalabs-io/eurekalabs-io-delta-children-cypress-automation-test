@@ -2,7 +2,7 @@ import BasePage from '../BasePage';
 
 export default class CartPage extends BasePage {
   static firstAddOn = ':nth-child(1) > .cb-addons-variant > :nth-child(4) > .v2-button';
-  static addToProceed = '.cb-addons-header__section-right > .d-flex > .v2-button';
+  static addToProceed = ':nth-child(141) > div.cb-addons > div > div.v2-row.cb-addons-border.cb-addons-border--top > div > div > button > span.v2-button__text';
 
   static selectAddOns() {
     cy.get(this.firstAddOn).click()
@@ -10,6 +10,7 @@ export default class CartPage extends BasePage {
   }
   
   static proceedToCart() {
-    cy.get(this.addToProceed).click()
+    cy.contains('Proceed to Cart').click({force:true}) 
+    //cy.get(this.addToProceed).click({force:true})
   }
 }
