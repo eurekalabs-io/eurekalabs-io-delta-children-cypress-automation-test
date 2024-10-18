@@ -41,7 +41,7 @@ it("select nursery sets", () => {
       NavBar.clickMenuSubCategory(data.subcategory);
       ProductsList.selectBundle(i);
       BasePage.pause(1000);
-      ProductDetailsPage.selectVariants();
+      ProductDetailsPage.selectProducts();
       ProductDetailsPage.bundleAddCart();
       CartPage.selectAddOns();
       CartPage.proceedToCart();
