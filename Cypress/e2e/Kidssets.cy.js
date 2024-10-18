@@ -39,9 +39,9 @@ it("select kids sets", () => {
       NavBar.clickMenu();
       NavBar.clickMenuCategory(data.category);
       NavBar.clickMenuSubCategory(data.subcategory);
-      //ProductsList.selectBundle(i);
+      ProductsList.selectBundleKidsSets(i);
       BasePage.pause(1000);
-      ProductDetailsPage.selectVariants();
+      ProductDetailsPage.selectVariantsKidsSets();
       ProductDetailsPage.bundleAddCart();
       BasePage.pause(5000);
     });
