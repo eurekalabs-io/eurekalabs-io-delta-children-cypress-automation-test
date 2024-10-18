@@ -41,7 +41,7 @@ it("select kids sets", () => {
       NavBar.clickMenuSubCategory(data.subcategory);
       ProductsList.selectBundleKidsSets(i);
       BasePage.pause(1000);
-      ProductDetailsPage.selectVariantsKidsSets();
+      ProductDetailsPage.selectProductsKidsSets();
       ProductDetailsPage.bundleAddCart();
       BasePage.pause(5000);
     });

@@ -38,7 +38,8 @@ it("Select Crib PDP seconds variant", () => {
   cy.get('a.product__title.product__item-title').each(($element,indexs,$list) => {
     console.log(`ELEMENT:${indexs}`, $element);
         cy.get(`div:nth-child(2) > div:nth-child(${indexs+1}) > div.product__item.mb4.old-crib-mobile-layout > div > div.col-12.col-md-7.col-xl-8.product__item-title-wrap.product__item-title-restyle > a`).click({force: true});
-     f(cy.get('ul.swatches__list').should('be.visible')){ 
+     if(cy.get('ul.swatches__list').should('be.visible'))
+     { 
         cy.xpath(`//*[@id="shopify-section-product-main"]/div[1]/div[4]/div[1]/div/div[2]/ul/li[2]/span/img`).wait(1000);
         cy.xpath(`//*[@id="shopify-section-product-main"]/div[1]/div[4]/div[1]/div/div[2]/ul/li[2]`).click({force: true});
         cy.go('back');
@@ -51,9 +52,8 @@ it("Select Crib PDP seconds variant", () => {
 it("select Crib collections variants", () => {
 
   cy.get('ul.swatches__list').each(($el, index, $list) => {
-    // Este es el UL 
-    if($el.children().length>1){  
-    //Si el UL tiene mas de un hijo (color) selecciona el segundo de la paleta de colores. 
+       if($el.children().length>1){  
+    //If the UL has more than one child (color), select the second one from the color palette. 
      cy.log($el, index);
      cy.get($el).find('li:nth-child(2)').click({force: true});
      cy.get($el).wait(1000);
