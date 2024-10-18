@@ -11,6 +11,6 @@ export default class CartPage extends BasePage {
   
   static proceedToCart() {
     cy.contains('Proceed to Cart').click({force:true}) 
-    //cy.get(this.addToProceed).click({force:true})
+    // Deprecated cy.get(this.addToProceed).click({force:true})
   }
 }
