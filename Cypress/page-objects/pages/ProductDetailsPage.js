@@ -17,7 +17,7 @@ export default class ProductDetailsPage extends BasePage {
       countOfElements = $elements.length;
       for (let cuenta = 1; cuenta <= countOfElements; cuenta++) {
         cy.get(`.components-section > :nth-child(1) > :nth-child(${cuenta}) > .cb-product-list-item-content`).click({force:true})
-        cy.get(this.addVariant).click()
+        cy.get(this.countProducts).click({force:true})
         BasePage.pause(1000)
       }
     });
@@ -30,7 +30,7 @@ export default class ProductDetailsPage extends BasePage {
       countOfElements = $elements.length;
       for (let cuenta = 1; cuenta <= countOfElements; cuenta++) {
         cy.get(`.components-section > :nth-child(1) > :nth-child(${cuenta}) > .cb-product-list-item-content`).click({force:true})
-        cy.get(this.addProducts).click()
+        cy.get(this.addProducts).click({force:true})
         BasePage.pause(1000)
       }
     });
