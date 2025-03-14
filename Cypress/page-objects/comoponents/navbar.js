@@ -6,7 +6,7 @@ export default class NavBar extends BasePage {
   static optionMenuSubCat = '.navigation-mobile__scroll-wrapper > .navigation-mega-subitem-wrapper >';
 
   static clickMenu() {
-    cy.get(this.menu).click();
+    cy.get(this.menu).click({force:true});
   }
 
   static clickMenuCategory(cat) {

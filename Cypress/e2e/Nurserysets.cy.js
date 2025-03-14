@@ -29,8 +29,8 @@ const sets = require("../fixtures/NurserySets.json");
 
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/");
-    BasePage.pause(500);
-    Modal.closeModal();
+    //BasePage.pause(50000);
+    //Modal.closeModal();
 });
 
 it("select nursery sets", () => {
@@ -41,7 +41,7 @@ it("select nursery sets", () => {
       NavBar.clickMenuSubCategory(data.subcategory);
       ProductsList.selectBundle(i);
       BasePage.pause(1000);
-      ProductDetailsPage.selectVariants();
+      ProductDetailsPage.selectProducts();
       ProductDetailsPage.bundleAddCart();
       CartPage.selectAddOns();
       CartPage.proceedToCart();

@@ -76,3 +76,32 @@ But in case you want to start from scratch, you can
 |   Npm   |  9.0.0  |
 | Cypress | 13.8.1  |
 
+### Commands Github to push changes 
+To create the repository, the following commands were used:
+git init
+
+git add .
+
+git commit -m 'comment'
+
+git remote add origin
+
+git remote -v <--- to view that the repository was created
+
+git push origin master <--- to upload the local project
+
+Update local repository to work with the latest version
+git pull origin master
+
+Review local changes with the master:
+git status
+
+To add the change made::
+git add .
+
+git commit -m 'comments'
+
+git push origin master
+
+To execute Cypress type
+npm run cy:open
