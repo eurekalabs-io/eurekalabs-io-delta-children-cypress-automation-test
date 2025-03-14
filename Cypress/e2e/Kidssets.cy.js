@@ -23,6 +23,9 @@ import NavBar from "../page-objects/comoponents/navbar";
 import CartPage from "../page-objects/pages/CartPage";
 import ProductDetailsPage from "../page-objects/pages/ProductDetailsPage";
 import ProductsList from "../page-objects/pages/ProductsList";
+import "cypress-axe";
+
+
 
 // Data
 const sets = require("../fixtures/KidsSets.json");
@@ -41,6 +44,14 @@ it("select kids sets", () => {
       NavBar.clickMenuSubCategory(data.subcategory);
       ProductsList.selectBundleKidsSets(i);
       BasePage.pause(1000);
+      cy.injectAxe();
+      it('Check entire page for a11y issues', () => {
+        cy.checkA11y();
+        cy.checkAccessibility();
+      });
+       it('Accessibility Test', () => {
+        cy.checkAccessibility();
+      });
       ProductDetailsPage.selectProductsKidsSets();
       ProductDetailsPage.bundleAddCart();
       BasePage.pause(5000);
