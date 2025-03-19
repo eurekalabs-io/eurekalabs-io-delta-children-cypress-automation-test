@@ -1,38 +1,32 @@
 name: Automation-Delta-Children Workflow
 on:
- schedule:
- cron: '0 0 * * *' # Ejecuta todos los días a la medianochejobs: 
+  schedule:
+    cron: '0 0 * * *' # Ejecuta todos los días a la medianoche
 
- jobs:
+jobs:
   cypress:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # https://github.com/cypress-io/github-action/issues/48
       matrix:
-        containers: [1, 2] # Uses 2 parallel instances
+        containers: [1, 2] # Usa 2 instancias paralelas
     steps:
-       - name: Checkout code           
-         uses: actions/checkout@v2
+      - name: Checkout code           
+        uses: actions/checkout@v2
       - name: Cypress run
         uses: cypress-io/github-action@v4
         with:
-          wait-on: 'https://www.deltachildren.com/' # Waits for above
+          wait-on: 'https://www.deltachildren.com/' # Espera a que esté disponible
           browser: chrome
           record: true
-          parallel: true # Runs test in parallel using settings above
-        - name: Install dependencies
+          parallel: true # Ejecuta las pruebas en paralelo usando la configuración anterior
+      - name: Install dependencies
         run: npm install         
-        - name: Run Cypress tests           
+      - name: Run Cypress tests           
         run: npx cypress run  
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
-
-        
-
-
 
 
 
