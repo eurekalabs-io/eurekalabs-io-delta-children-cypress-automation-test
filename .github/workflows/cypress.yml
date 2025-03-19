@@ -4,7 +4,7 @@ on:
  cron: '0 0 * * *' # Ejecuta todos los días a la medianochejobs: 
 
  jobs:
-  cypress-run:
+  cypress:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # https://github.com/cypress-io/github-action/issues/48
