@@ -1,7 +1,7 @@
 name: Automation-Delta-Children Workflow
 on:
   schedule:
-  - cron:  '30 5,17 * * *' #* The workflow every day at 5:30 and 17:30 UTC
+  - cron:  '30 0 * * *' #* The workflow every day at 00:30 UTC
 
 jobs:
   cypress:
