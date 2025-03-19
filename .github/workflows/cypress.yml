@@ -1,7 +1,7 @@
 name: Automation-Delta-Children Workflow
 on:
   schedule:
-    cron: '0 0 * * *' # Ejecuta todos los días a la medianoche
+   - cron: '0 0 * * *' # Ejecuta todos los días a la medianoche
 
 jobs:
   cypress:
