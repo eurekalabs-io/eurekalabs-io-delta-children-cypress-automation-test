@@ -1,8 +1,9 @@
 name: Automation-Delta-Children Workflow
 on:
  schedule:
-    - cron: '0 11 * * 1-5'
-jobs: 
+ cron: '0 0 * * *' # Ejecuta todos los días a la medianochejobs: 
+
+ jobs:
   cypress-run:
     runs-on: ubuntu-latest, macos-latest
     strategy:
@@ -19,6 +20,10 @@ jobs:
           browser: chrome
           record: true
           parallel: true # Runs test in parallel using settings above
+        - name: Install dependencies
+        run: npm install         
+        - name: Run Cypress tests           
+        run: npx cypress run  
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
