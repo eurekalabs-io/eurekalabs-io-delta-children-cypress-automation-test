@@ -7,6 +7,8 @@ module.exports = defineConfig({
   e2e: {
     watchForFileChanges: false,
     supportFile: 'Cypress/support/e2e.js',
+    specPattern: 'Cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+    fixturesFolder: 'Cypress/fixtures',
     setupNodeEvents(on, config) {
          // Add accessibility tasks
       addAccessibilityTasks(on);
