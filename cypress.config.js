@@ -6,6 +6,7 @@ const addAccessibilityTasks = require('wick-a11y/accessibility-tasks');
 module.exports = defineConfig({
   e2e: {
     watchForFileChanges: false,
+    supportFile: false,
     setupNodeEvents(on, config) {
          // Add accessibility tasks
       addAccessibilityTasks(on);
