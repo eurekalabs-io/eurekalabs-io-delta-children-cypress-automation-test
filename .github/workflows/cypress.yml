@@ -16,10 +16,11 @@ on:
 jobs:
   cypress:
     runs-on: ubuntu-latest
+    # Sin matriz cuando no hay recording para evitar ejecuciones duplicadas
     strategy:
       fail-fast: false
       matrix:
-        containers: [1, 2] # Usa 2 instancias paralelas para ejecución más rápida
+        containers: [1] # Un solo contenedor (sin paralelización sin recording)
     
     steps:
       - name: Checkout code
@@ -34,13 +35,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Cypress run
+      - name: Cypress run (without recording)
+        if: ${{ secrets.CYPRESS_RECORD_KEY == '' }}
         uses: cypress-io/github-action@v6
         with:
           wait-on: 'https://www.deltachildren.com/'
           wait-on-timeout: 120
           browser: chrome
-          record: ${{ secrets.CYPRESS_RECORD_KEY != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Cypress run (with recording)
+        if: ${{ secrets.CYPRESS_RECORD_KEY != '' }}
+        uses: cypress-io/github-action@v6
+        with:
+          wait-on: 'https://www.deltachildren.com/'
+          wait-on-timeout: 120
+          browser: chrome
+          record: true
           parallel: true
           group: 'Delta Children Tests'
           ci-build-id: ${{ github.run_id }}
