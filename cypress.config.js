@@ -6,7 +6,7 @@ const addAccessibilityTasks = require('wick-a11y/accessibility-tasks');
 module.exports = defineConfig({
   e2e: {
     watchForFileChanges: false,
-    supportFile: false,
+    supportFile: 'Cypress/support/e2e.js',
     setupNodeEvents(on, config) {
          // Add accessibility tasks
       addAccessibilityTasks(on);
