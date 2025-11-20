@@ -35,8 +35,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Check if recording is enabled
+        id: check-recording
+        run: |
+          if [ -z "${{ secrets.CYPRESS_RECORD_KEY }}" ]; then
+            echo "recording_enabled=false" >> $GITHUB_OUTPUT
+          else
+            echo "recording_enabled=true" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Cypress run (without recording)
-        if: ${{ secrets.CYPRESS_RECORD_KEY == '' }}
+        if: steps.check-recording.outputs.recording_enabled == 'false'
         uses: cypress-io/github-action@v6
         with:
           wait-on: 'https://www.deltachildren.com/'
@@ -46,7 +55,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Cypress run (with recording)
-        if: ${{ secrets.CYPRESS_RECORD_KEY != '' }}
+        if: steps.check-recording.outputs.recording_enabled == 'true'
         uses: cypress-io/github-action@v6
         with:
           wait-on: 'https://www.deltachildren.com/'
