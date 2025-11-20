@@ -1,32 +1,68 @@
 name: Automation-Delta-Children Workflow
+
 on:
+  # Ejecutar diariamente a las 00:30 UTC (medianoche en muchas zonas horarias)
   schedule:
-  - cron:  '30 0 * * *' #* The workflow every day at 00:30 UTC
+    - cron: '30 0 * * *'
+  # También ejecutar manualmente desde GitHub Actions
+  workflow_dispatch:
+  # Ejecutar en push a la rama principal
+  push:
+    branches:
+      - Automation-Delta
+      - main
+      - master
 
 jobs:
   cypress:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false # https://github.com/cypress-io/github-action/issues/48
+      fail-fast: false
       matrix:
-        containers: [1, 2] # Usa 2 instancias paralelas
+        containers: [1, 2] # Usa 2 instancias paralelas para ejecución más rápida
+    
     steps:
-      - name: Checkout code           
-        uses: actions/checkout@v2
-      - name: Cypress run
-        uses: cypress-io/github-action@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          wait-on: 'https://www.deltachildren.com/' # Espera a que esté disponible
-          browser: chrome
-          record: true
-          parallel: true # Ejecuta las pruebas en paralelo usando la configuración anterior
+          node-version: '20'
+          cache: 'npm'
+      
       - name: Install dependencies
-        run: npm install         
-      - name: Run Cypress tests           
-        run: npx cypress run  
+        run: npm ci
+      
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          wait-on: 'https://www.deltachildren.com/'
+          wait-on-timeout: 120
+          browser: chrome
+          record: ${{ secrets.CYPRESS_RECORD_KEY != '' }}
+          parallel: true
+          group: 'Delta Children Tests'
+          ci-build-id: ${{ github.run_id }}
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload Cypress screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: Cypress/screenshots
+          retention-days: 7
+      
+      - name: Upload Cypress videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: Cypress/videos
+          retention-days: 7
 
 
 
