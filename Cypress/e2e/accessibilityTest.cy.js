@@ -3,10 +3,10 @@ describe('Accessibility Suite', () => {
     const waitForPageLoad = () => {
         // Esperar a que el body esté visible
         cy.get('body').should('be.visible');
-        // Esperar a que no haya indicadores de carga activos
-        cy.get('[class*="loading"], [class*="spinner"], [class*="loader"]', { timeout: 10000 })
-            .should('not.exist')
-            .or('not.be.visible');
+        // Verificar que no haya indicadores de carga visibles
+        // Si no existen, la verificación pasa automáticamente
+        cy.get('[class*="loading"]:visible, [class*="spinner"]:visible, [class*="loader"]:visible', { timeout: 10000 })
+            .should('not.exist');
         // Esperar un momento para que se estabilice el DOM y las animaciones
         cy.wait(1500);
     };
