@@ -3,24 +3,30 @@ describe('Accessibility Suite', () => {
     const waitForPageLoad = () => {
         // Esperar a que el body esté visible
         cy.get('body').should('be.visible');
-        // Verificar que no haya indicadores de carga visibles
-        // Si no existen, la verificación pasa automáticamente
-        cy.get('[class*="loading"]:visible, [class*="spinner"]:visible, [class*="loader"]:visible', { timeout: 10000 })
-            .should('not.exist');
-        // Esperar un momento para que se estabilice el DOM y las animaciones
-        cy.wait(1500);
+        // Esperar a que los elementos de carga desaparezcan (si existen)
+        // Usar una verificación más flexible que no bloquee si no existen
+        cy.get('body').then(($body) => {
+            const loadingElements = $body.find('[class*="loading"]:visible, [class*="spinner"]:visible, [class*="loader"]:visible');
+            if (loadingElements.length > 0) {
+                // Si hay elementos de carga, esperar a que desaparezcan
+                cy.get('[class*="loading"]:visible, [class*="spinner"]:visible, [class*="loader"]:visible', { timeout: 10000 })
+                    .should('not.exist');
+            }
+        });
+        // Esperar un momento más corto para que se estabilice el DOM
+        cy.wait(500);
     };
 
     // Función helper para ejecutar verificación de accesibilidad con manejo de errores y screenshots
     const checkAccessibilityWithReporting = (options, testName, pageUrl) => {
         // Generar nombre único para el screenshot basado en el test y la página
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        const pageName = pageUrl ? pageUrl.replace(/https?:\/\//, '').replace(/\//g, '-') : 'page';
-        const screenshotName = `Accessibility-${testName}-${pageName}-${timestamp}`;
+        const pageName = pageUrl ? pageUrl.replace(/https?:\/\//, '').replace(/\//g, '-').substring(0, 50) : 'page';
+        const screenshotName = `Accessibility-${testName}-${pageName}`.substring(0, 100);
         
-        // Tomar screenshot antes de la verificación para tener contexto
+        // Tomar screenshot antes de la verificación (solo viewport, más rápido)
         cy.screenshot(`${screenshotName}-before`, { 
-            capture: 'fullPage',
+            capture: 'viewport', // Cambiar a viewport para ser más rápido
             overwrite: true 
         });
 
@@ -31,21 +37,25 @@ describe('Accessibility Suite', () => {
             if (violations && violations.length > 0) {
                 // Tomar screenshot después de la verificación
                 cy.screenshot(`${screenshotName}-violations`, { 
-                    capture: 'fullPage',
+                    capture: 'viewport', // Cambiar a viewport para ser más rápido
                     overwrite: true 
                 });
                 
-                // Log detallado de las violaciones
+                // Log detallado de las violaciones (limitar a las primeras 10 para no saturar)
                 cy.log(`⚠️ Se encontraron ${violations.length} violación(es) de accesibilidad`);
-                violations.forEach((violation, index) => {
+                const violationsToLog = violations.slice(0, 10);
+                violationsToLog.forEach((violation, index) => {
                     const violationInfo = {
                         id: violation.id || violation.rule || 'N/A',
                         impact: violation.impact || 'N/A',
-                        description: violation.description || violation.message || 'Sin descripción',
+                        description: (violation.description || violation.message || 'Sin descripción').substring(0, 100),
                         nodes: violation.nodes ? violation.nodes.length : 0
                     };
-                    cy.log(`Violación ${index + 1}: ${violationInfo.id} - Impacto: ${violationInfo.impact} - ${violationInfo.description} (${violationInfo.nodes} nodo(s) afectado(s))`);
+                    cy.log(`Violación ${index + 1}: ${violationInfo.id} - Impacto: ${violationInfo.impact} - ${violationInfo.description} (${violationInfo.nodes} nodo(s))`);
                 });
+                if (violations.length > 10) {
+                    cy.log(`... y ${violations.length - 10} violación(es) más`);
+                }
                 
                 // Lanzar error para que el test falle y se genere el reporte completo
                 // wick-a11y ya habrá generado el reporte HTML con screenshot

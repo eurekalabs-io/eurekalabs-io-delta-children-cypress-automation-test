@@ -19,7 +19,7 @@ module.exports = defineConfig({
       return config;
     },
     baseUrl: 'https://www.deltachildren.com/',
-    defaultCommandTimeout: 20000,
+    defaultCommandTimeout: 30000, // Aumentar timeout para verificaciones de accesibilidad
     chromeWebSecurity: false,
     projectId: 'ds6q9s',
     // Lower memory footprint by reducing concurrency and junk collector pressure
