@@ -12,9 +12,10 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
          // Add accessibility tasks
       addAccessibilityTasks(on);
-      // Reduce memory usage by disabling video/screenshots unless needed
+      // Reduce memory usage by disabling video
       config.video = false;
-      config.screenshotOnRunFailure = false;
+      // Habilitar screenshots solo para tests de accesibilidad (se maneja en el test)
+      config.screenshotOnRunFailure = true;
       return config;
     },
     baseUrl: 'https://www.deltachildren.com/',

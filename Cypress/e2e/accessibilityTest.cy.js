@@ -11,6 +11,54 @@ describe('Accessibility Suite', () => {
         cy.wait(1500);
     };
 
+    // Función helper para ejecutar verificación de accesibilidad con manejo de errores y screenshots
+    const checkAccessibilityWithReporting = (options, testName, pageUrl) => {
+        // Generar nombre único para el screenshot basado en el test y la página
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const pageName = pageUrl ? pageUrl.replace(/https?:\/\//, '').replace(/\//g, '-') : 'page';
+        const screenshotName = `Accessibility-${testName}-${pageName}-${timestamp}`;
+        
+        // Tomar screenshot antes de la verificación para tener contexto
+        cy.screenshot(`${screenshotName}-before`, { 
+            capture: 'fullPage',
+            overwrite: true 
+        });
+
+        // Ejecutar verificación de accesibilidad con manejo de errores
+        cy.checkAccessibility(options).then((violations) => {
+            if (violations && violations.length > 0) {
+                // Si hay violaciones, tomar screenshot después de la verificación
+                cy.screenshot(`${screenshotName}-violations`, { 
+                    capture: 'fullPage',
+                    overwrite: true 
+                });
+                
+                // Log detallado de las violaciones
+                cy.log(`⚠️ Se encontraron ${violations.length} violación(es) de accesibilidad`);
+                violations.forEach((violation, index) => {
+                    cy.log(`Violación ${index + 1}: ${violation.id || violation.rule} - Impacto: ${violation.impact || 'N/A'} - ${violation.description || violation.message || 'Sin descripción'}`);
+                });
+                
+                // Lanzar error para que el test falle y se genere el reporte completo
+                throw new Error(`Se encontraron ${violations.length} violación(es) de accesibilidad. Ver reporte en Cypress/accessibility/`);
+            } else {
+                cy.log('✅ No se encontraron violaciones de accesibilidad');
+            }
+        }).catch((error) => {
+            // Si hay un error o violaciones, tomar screenshot final para debugging
+            cy.screenshot(`${screenshotName}-error`, { 
+                capture: 'fullPage',
+                overwrite: true 
+            });
+            
+            // Log del error
+            cy.log(`❌ Error o violaciones encontradas: ${error.message}`);
+            
+            // Re-lanzar el error para que el test falle y se genere el reporte
+            throw error;
+        });
+    };
+
     // Configuración de accesibilidad (ajustar según necesidades)
     const accessibilityOptions = {
         // Excluir elementos que comúnmente causan falsos positivos
@@ -33,8 +81,11 @@ describe('Accessibility Suite', () => {
         cy.get('body').should('be.visible');
         cy.url().should('not.include', '404');
         
-        // Verificar accesibilidad con configuración personalizada
-        cy.checkAccessibility(accessibilityOptions);
+        // Obtener URL actual para el reporte
+        cy.url().then((url) => {
+            // Verificar accesibilidad con reporte y screenshot
+            checkAccessibilityWithReporting(accessibilityOptions, 'Homepage', url);
+        });
     });
 
     // Páginas críticas para probar accesibilidad
@@ -67,8 +118,11 @@ describe('Accessibility Suite', () => {
                     // Si la página es válida, continuar con el test
                     waitForPageLoad();
                     
-                    // Ejecutar verificación de accesibilidad
-                    cy.checkAccessibility(accessibilityOptions);
+                    // Obtener URL actual para el reporte
+                    cy.url().then((url) => {
+                        // Ejecutar verificación de accesibilidad con reporte y screenshot
+                        checkAccessibilityWithReporting(accessibilityOptions, name, url);
+                    });
                 }
             });
         });
@@ -114,8 +168,11 @@ describe('Accessibility Suite', () => {
                                                   pdpBodyText.includes('not found');
                             
                             if (!isPdpErrorPage) {
-                                // Verificar accesibilidad en la página de producto
-                                cy.checkAccessibility(accessibilityOptions);
+                                // Obtener URL actual para el reporte
+                                cy.url().then((pdpUrl) => {
+                                    // Verificar accesibilidad en la página de producto con reporte y screenshot
+                                    checkAccessibilityWithReporting(accessibilityOptions, 'Product Detail Page', pdpUrl);
+                                });
                             } else {
                                 cy.log('⚠️ Página de producto no disponible, saltando test');
                             }
@@ -140,8 +197,11 @@ describe('Accessibility Suite', () => {
             cy.visit('/');
             waitForPageLoad();
             
-            // Verificar accesibilidad en el viewport específico
-            cy.checkAccessibility(accessibilityOptions);
+            // Obtener URL actual para el reporte
+            cy.url().then((url) => {
+                // Verificar accesibilidad en el viewport específico con reporte y screenshot
+                checkAccessibilityWithReporting(accessibilityOptions, `${name} Viewport`, url);
+            });
         });
     });
 });
