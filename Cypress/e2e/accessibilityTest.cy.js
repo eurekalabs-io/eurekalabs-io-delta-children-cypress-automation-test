@@ -24,10 +24,12 @@ describe('Accessibility Suite', () => {
             overwrite: true 
         });
 
-        // Ejecutar verificación de accesibilidad con manejo de errores
+        // Ejecutar verificación de accesibilidad
+        // wick-a11y automáticamente genera reportes y screenshots cuando hay violaciones
         cy.checkAccessibility(options).then((violations) => {
+            // Si hay violaciones, tomar screenshot adicional y log detallado
             if (violations && violations.length > 0) {
-                // Si hay violaciones, tomar screenshot después de la verificación
+                // Tomar screenshot después de la verificación
                 cy.screenshot(`${screenshotName}-violations`, { 
                     capture: 'fullPage',
                     overwrite: true 
@@ -36,27 +38,25 @@ describe('Accessibility Suite', () => {
                 // Log detallado de las violaciones
                 cy.log(`⚠️ Se encontraron ${violations.length} violación(es) de accesibilidad`);
                 violations.forEach((violation, index) => {
-                    cy.log(`Violación ${index + 1}: ${violation.id || violation.rule} - Impacto: ${violation.impact || 'N/A'} - ${violation.description || violation.message || 'Sin descripción'}`);
+                    const violationInfo = {
+                        id: violation.id || violation.rule || 'N/A',
+                        impact: violation.impact || 'N/A',
+                        description: violation.description || violation.message || 'Sin descripción',
+                        nodes: violation.nodes ? violation.nodes.length : 0
+                    };
+                    cy.log(`Violación ${index + 1}: ${violationInfo.id} - Impacto: ${violationInfo.impact} - ${violationInfo.description} (${violationInfo.nodes} nodo(s) afectado(s))`);
                 });
                 
                 // Lanzar error para que el test falle y se genere el reporte completo
+                // wick-a11y ya habrá generado el reporte HTML con screenshot
                 throw new Error(`Se encontraron ${violations.length} violación(es) de accesibilidad. Ver reporte en Cypress/accessibility/`);
             } else {
                 cy.log('✅ No se encontraron violaciones de accesibilidad');
             }
-        }).catch((error) => {
-            // Si hay un error o violaciones, tomar screenshot final para debugging
-            cy.screenshot(`${screenshotName}-error`, { 
-                capture: 'fullPage',
-                overwrite: true 
-            });
-            
-            // Log del error
-            cy.log(`❌ Error o violaciones encontradas: ${error.message}`);
-            
-            // Re-lanzar el error para que el test falle y se genere el reporte
-            throw error;
         });
+        
+        // En caso de error en la ejecución del comando, Cypress lo manejará automáticamente
+        // y tomará screenshot si está configurado en cypress.config.js
     };
 
     // Configuración de accesibilidad (ajustar según necesidades)
