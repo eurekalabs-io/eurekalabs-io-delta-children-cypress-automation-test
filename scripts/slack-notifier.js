@@ -443,54 +443,80 @@ function extractFilesFromTitles(suites, results = null) {
   const filePatterns = {
     'Cribs Collection Suite': 'Cribs.cy.js',
     'Cribs Collection Tests': 'Cribs.cy.js',
+    'Cribs Collection': 'Cribs.cy.js',
     'Cribs': 'Cribs.cy.js',
     'Kids Sets Collection Suite': 'Kidssets.cy.js',
     'Kids Sets Collection Tests': 'Kidssets.cy.js',
+    'Kids Sets Collection': 'Kidssets.cy.js',
     'Kids Sets': 'Kidssets.cy.js',
     'Kids Set': 'Kidssets.cy.js',
     'Nursery Sets Collection Suite': 'Nurserysets.cy.js',
     'Nursery Sets Collection Tests': 'Nurserysets.cy.js',
+    'Nursery Sets Collection': 'Nurserysets.cy.js',
     'Nursery Sets': 'Nurserysets.cy.js',
     'Nursery Set': 'Nurserysets.cy.js',
-    'Accessibility Suite': 'accessibilityTest.cy.js'
+    'Accessibility Suite': 'accessibilityTest.cy.js',
+    'Accessibility': 'accessibilityTest.cy.js'
   };
   
   const foundFiles = new Set();
   
-  console.log('🔄 Trying fallback extraction from titles...');
+  console.log('🔄 Running fallback extraction from titles...');
+  console.log(`   Checking ${suites.length} suite(s) and results...`);
   
-  // Check suite titles
-  suites.forEach(suite => {
-    const title = suite.title || '';
+  // Check suite titles (case-insensitive)
+  suites.forEach((suite, idx) => {
+    const title = (suite.title || '').toLowerCase();
+    console.log(`   Suite ${idx + 1}: "${suite.title || 'N/A'}"`);
+    
     Object.keys(filePatterns).forEach(pattern => {
-      if (title.includes(pattern)) {
-        console.log(`   Found pattern "${pattern}" in suite title: "${title}" -> ${filePatterns[pattern]}`);
+      const patternLower = pattern.toLowerCase();
+      if (title.includes(patternLower)) {
+        console.log(`   ✅ Found pattern "${pattern}" in suite title: "${suite.title}" -> ${filePatterns[pattern]}`);
         foundFiles.add(filePatterns[pattern]);
       }
     });
   });
   
-  // Check results directly
+  // Check results directly (more comprehensive)
   if (results && results.results && Array.isArray(results.results)) {
-    const checkItem = (item) => {
-      const title = item.title || item.fullTitle || '';
-      Object.keys(filePatterns).forEach(pattern => {
-        if (title.includes(pattern)) {
-          console.log(`   Found pattern "${pattern}" in item title: "${title}" -> ${filePatterns[pattern]}`);
-          foundFiles.add(filePatterns[pattern]);
-        }
-      });
+    const checkItem = (item, level = 0) => {
+      const indent = '  '.repeat(level);
+      const title = (item.title || item.fullTitle || '').toLowerCase();
+      
+      if (title) {
+        Object.keys(filePatterns).forEach(pattern => {
+          const patternLower = pattern.toLowerCase();
+          if (title.includes(patternLower)) {
+            console.log(`${indent}✅ Found pattern "${pattern}" in ${level === 0 ? 'top-level' : 'nested'} item: "${item.title || item.fullTitle}" -> ${filePatterns[pattern]}`);
+            foundFiles.add(filePatterns[pattern]);
+          }
+        });
+      }
+      
+      // Also check file path if available
+      if (item.file) {
+        const fileName = path.basename(item.file).toLowerCase();
+        Object.keys(filePatterns).forEach(pattern => {
+          const expectedFile = filePatterns[pattern].toLowerCase();
+          if (fileName === expectedFile || fileName.includes(expectedFile.replace('.cy.js', ''))) {
+            console.log(`${indent}✅ Found file match: "${item.file}" -> ${filePatterns[pattern]}`);
+            foundFiles.add(filePatterns[pattern]);
+          }
+        });
+      }
       
       if (item.suites && Array.isArray(item.suites)) {
-        item.suites.forEach(checkItem);
+        item.suites.forEach(nestedSuite => checkItem(nestedSuite, level + 1));
       }
       
       if (item.tests && Array.isArray(item.tests)) {
         item.tests.forEach(test => {
-          const testTitle = test.title || test.fullTitle || '';
+          const testTitle = (test.title || test.fullTitle || '').toLowerCase();
           Object.keys(filePatterns).forEach(pattern => {
-            if (testTitle.includes(pattern)) {
-              console.log(`   Found pattern "${pattern}" in test title: "${testTitle}" -> ${filePatterns[pattern]}`);
+            const patternLower = pattern.toLowerCase();
+            if (testTitle.includes(patternLower)) {
+              console.log(`${indent}✅ Found pattern "${pattern}" in test title: "${test.title || test.fullTitle}" -> ${filePatterns[pattern]}`);
               foundFiles.add(filePatterns[pattern]);
             }
           });
@@ -498,11 +524,14 @@ function extractFilesFromTitles(suites, results = null) {
       }
     };
     
-    results.results.forEach(checkItem);
+    results.results.forEach((result, idx) => {
+      console.log(`   Checking top-level result ${idx + 1}...`);
+      checkItem(result, 0);
+    });
   }
   
   const files = Array.from(foundFiles).sort();
-  console.log(`📁 Fallback extraction found ${files.length} file(s): ${files.join(', ')}`);
+  console.log(`📁 Fallback extraction found ${files.length} file(s): ${files.join(', ') || 'NONE'}`);
   return files;
 }
 
@@ -637,14 +666,13 @@ function formatTestDetails(suites, results = null) {
   let totalTestsSkipped = 0;
   
   // Add test files executed section
+  // Always try both methods and merge results
   let testFiles = getTestFiles(suites, results);
-  if (testFiles.length === 0) {
-    // Fallback: try to extract file names from suite titles or test titles
-    console.log('⚠️ No files found via getTestFiles, trying fallback extraction...');
-    testFiles = extractFilesFromTitles(suites, results);
-  }
+  const fallbackFiles = extractFilesFromTitles(suites, results);
+  const allFiles = [...new Set([...testFiles, ...fallbackFiles])].sort();
   
-  if (testFiles.length > 0) {
+  if (allFiles.length > 0) {
+    testFiles = allFiles;
     details += '*📁 Test Files Executed:*\n';
     testFiles.forEach(file => {
       details += `  • ${file}\n`;
@@ -807,27 +835,23 @@ function createSlackMessage(summary, results) {
   const suites = getTestSuitesSummary(results);
   let testFiles = getTestFiles(suites, results);
   
-  // If no files found, try fallback method
-  if (testFiles.length === 0) {
-    console.log('⚠️ No files found via getTestFiles, trying fallback extraction from titles...');
-    const fallbackFiles = extractFilesFromTitles(suites, results);
-    if (fallbackFiles.length > 0) {
-      testFiles = fallbackFiles;
-      console.log(`✅ Using ${fallbackFiles.length} file(s) from fallback extraction`);
-    }
+  // ALWAYS try fallback method to ensure we capture all files
+  // This is critical because mochawesome may not always include file paths in JSON
+  console.log('🔄 Running fallback extraction from titles (always executed)...');
+  const fallbackFiles = extractFilesFromTitles(suites, results);
+  
+  // Merge both methods and remove duplicates
+  const allFiles = [...new Set([...testFiles, ...fallbackFiles])].sort();
+  
+  if (allFiles.length > testFiles.length) {
+    console.log(`✅ Fallback method found ${allFiles.length - testFiles.length} additional file(s)`);
+    testFiles = allFiles;
+  } else if (testFiles.length === 0 && fallbackFiles.length > 0) {
+    console.log(`✅ Using ${fallbackFiles.length} file(s) from fallback extraction`);
+    testFiles = fallbackFiles;
   }
   
   const testDetails = formatTestDetails(suites, results);
-  
-  // If no files found, try fallback method
-  if (testFiles.length === 0) {
-    console.log('⚠️ No files found via getTestFiles, trying fallback extraction from titles...');
-    const fallbackFiles = extractFilesFromTitles(suites, results);
-    if (fallbackFiles.length > 0) {
-      testFiles = fallbackFiles;
-      console.log(`✅ Using ${fallbackFiles.length} file(s) from fallback extraction`);
-    }
-  }
   
   // Debug logging
   console.log(`📋 Found ${suites.length} test suite(s)`);
