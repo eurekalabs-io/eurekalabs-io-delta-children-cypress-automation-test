@@ -32,122 +32,124 @@ const sets = require("../fixtures/Cribs.json");
 
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/collections/cribs");
+  // Accept cookie banner if it appears
+  cy.acceptCookieBannerIfPresent();
   cy.waitForCollectionGrid();
-  // Evitar scroll automático - asegurar que estamos en la parte superior
+  // Avoid automatic scroll - ensure we're at the top
   cy.scrollTo(0, 0);
   cy.wait(1000);
-  // Deshabilitar scroll automático de Cypress
+  // Disable Cypress automatic scroll
   cy.window().then((win) => {
     win.scrollTo(0, 0);
   });
 });
 
 it("Select Crib PDP second variant for each product", () => {
-  // PASO 1: Buscar todos los productos en la página de cunas
+  // STEP 1: Find all products on the cribs page
   cy.get('a.product__title.product__item-title').then(($elements) => {
-    cy.log(`PASO 1: Encontrados ${$elements.length} productos en la página de cunas`);
+    cy.log(`STEP 1: Found ${$elements.length} products on the cribs page`);
     
-    // PASO 2: Convertir elementos jQuery a array JavaScript para manipulación
+    // STEP 2: Convert jQuery elements to JavaScript array for manipulation
     const elements = $elements.toArray();
-    cy.log(`PASO 2: Convertidos ${elements.length} elementos a array JavaScript`);
+    cy.log(`STEP 2: Converted ${elements.length} elements to JavaScript array`);
     
-    // PASO 3: Mezclar aleatoriamente todos los productos disponibles
+    // STEP 3: Randomly shuffle all available products
     const shuffled = elements.sort(() => Math.random() - 0.5);
-    cy.log(`PASO 3: Productos mezclados aleatoriamente`);
+    cy.log(`STEP 3: Products randomly shuffled`);
     
-    // PASO 4: Seleccionar máximo 4 productos aleatorios
+    // STEP 4: Select maximum 4 random products
     const selectedElements = shuffled.slice(0, Math.min(4, elements.length));
-    cy.log(`PASO 4: Seleccionados ${selectedElements.length} productos aleatorios para procesar`);
+    cy.log(`STEP 4: Selected ${selectedElements.length} random products to process`);
     
-    // PASO 5: Procesar cada producto seleccionado uno por uno
+    // STEP 5: Process each selected product one by one
     cy.wrap(selectedElements).each(($title, index) => {
-      cy.log(`PASO 5: Iniciando procesamiento del producto ${index + 1} de ${selectedElements.length}`);
+      cy.log(`STEP 5: Starting processing of product ${index + 1} of ${selectedElements.length}`);
       
-      // PASO 6: Obtener el href del producto para re-seleccionarlo después del click
+      // STEP 6: Get the product href to re-select it after the click
       cy.wrap($title).invoke('attr', 'href').then((href) => {
-        cy.log(`PASO 6: Obtenido href del producto: ${href}`);
+        cy.log(`STEP 6: Obtained product href: ${href}`);
         
-        // PASO 7: Hacer click en el producto usando su href para evitar errores de DOM detached
+        // STEP 7: Click on the product using its href to avoid DOM detached errors
         cy.get(`a.product__title.product__item-title[href="${href}"]`).click({ force: true });
-        cy.log(`PASO 7: Click realizado en el producto, navegando a PDP (Product Detail Page)`);
+        cy.log(`STEP 7: Click performed on product, navigating to PDP (Product Detail Page)`);
         
-        // PASO 8: Esperar que la página PDP cargue completamente
+        // STEP 8: Wait for PDP page to load completely
         cy.url().should('contain', '/products/');
-        cy.log(`PASO 8: PDP cargada correctamente`);
+        cy.log(`STEP 8: PDP loaded correctly`);
         
-        // PASO 9: Seleccionar la segunda variante en la página de detalles del producto
+        // STEP 9: Select the second variant on the product detail page
         cy.selectSecondVariantOnPDP();
-        cy.log(`PASO 9: Segunda variante seleccionada en PDP`);
+        cy.log(`STEP 9: Second variant selected on PDP`);
         
-        // PASO 10: Volver a la página de colección de cunas
+        // STEP 10: Go back to the cribs collection page
         cy.go('back');
-        cy.log(`PASO 10: Regresando a la página de colección de cunas`);
+        cy.log(`STEP 10: Returning to cribs collection page`);
         
-        // PASO 11: Esperar que la grid de productos esté cargada antes de continuar
+        // STEP 11: Wait for product grid to be loaded before continuing
         cy.waitForCollectionGrid();
-        cy.log(`PASO 11: Grid de productos cargada, continuando con el siguiente producto`);
+        cy.log(`STEP 11: Product grid loaded, continuing with next product`);
       });
     });
     
-    cy.log(`PASO FINAL: Todos los ${selectedElements.length} productos procesados exitosamente`);
+    cy.log(`FINAL STEP: All ${selectedElements.length} products processed successfully`);
   });
 });
 
 
 it("Select second variant on collection for items with multiple swatches", () => {
-  // PASO 1: Buscar todos los productos en la página de cunas
+  // STEP 1: Find all products on the cribs page
   cy.get('a.product__title.product__item-title').then(($elements) => {
-    cy.log(`PASO 1: Encontrados ${$elements.length} productos en la página de cunas`);
+    cy.log(`STEP 1: Found ${$elements.length} products on the cribs page`);
     
-    // PASO 2: Convertir elementos jQuery a array JavaScript para manipulación
+    // STEP 2: Convert jQuery elements to JavaScript array for manipulation
     const elements = $elements.toArray();
-    cy.log(`PASO 2: Convertidos ${elements.length} elementos a array JavaScript`);
+    cy.log(`STEP 2: Converted ${elements.length} elements to JavaScript array`);
     
-    // PASO 3: Mezclar aleatoriamente todos los productos disponibles
+    // STEP 3: Randomly shuffle all available products
     const shuffled = elements.sort(() => Math.random() - 0.5);
-    cy.log(`PASO 3: Productos mezclados aleatoriamente`);
+    cy.log(`STEP 3: Products randomly shuffled`);
     
-    // PASO 4: Seleccionar máximo 4 productos aleatorios
+    // STEP 4: Select maximum 4 random products
     const selectedElements = shuffled.slice(0, Math.min(4, elements.length));
-    cy.log(`PASO 4: Seleccionados ${selectedElements.length} productos aleatorios para procesar`);
+    cy.log(`STEP 4: Selected ${selectedElements.length} random products to process`);
     
-    // PASO 5: Procesar cada producto seleccionado uno por uno (SIN NAVEGAR A PDP)
+    // STEP 5: Process each selected product one by one (WITHOUT NAVIGATING TO PDP)
     cy.wrap(selectedElements).each(($title, index) => {
-      cy.log(`PASO 5: Iniciando procesamiento del producto ${index + 1} de ${selectedElements.length}`);
+      cy.log(`STEP 5: Starting processing of product ${index + 1} of ${selectedElements.length}`);
       
-      // PASO 6: Obtener el href del producto para re-seleccionarlo después del click
+      // STEP 6: Get the product href to re-select it after the click
       cy.wrap($title).invoke('attr', 'href').then((href) => {
-        cy.log(`PASO 6: Obtenido href del producto: ${href}`);
+        cy.log(`STEP 6: Obtained product href: ${href}`);
         
-        // PASO 7: Buscar el contenedor del producto usando el href con timeout robusto
+        // STEP 7: Find the product container using the href with robust timeout
         cy.get(`a.product__title.product__item-title[href="${href}"]`, { timeout: 10000 })
           .should('exist')
           .closest('.product__item')
           .then(($productContainer) => {
             if ($productContainer.length > 0) {
-              cy.log(`PASO 7: Contenedor del producto encontrado`);
+              cy.log(`STEP 7: Product container found`);
               
-              // PASO 8: Verificar si el contenedor es realmente visible (maneja CSS visibility: hidden)
+              // STEP 8: Verify if the container is really visible (handles CSS visibility: hidden)
               return cy.wrap($productContainer).isElementReallyVisible().then((isReallyVisible) => {
                 if (isReallyVisible) {
-                  cy.log(`PASO 8: Contenedor del producto es realmente visible`);
-                  cy.wait(500); // Espera adicional para elementos dinámicos
+                  cy.log(`STEP 8: Product container is really visible`);
+                  cy.wait(500); // Additional wait for dynamic elements
                   
-                  // PASO 9: Buscar swatches en la grid (sin navegar a PDP)
+                  // STEP 9: Find swatches in the grid (without navigating to PDP)
                   return cy.wrap($productContainer).findAndSelectSecondSwatch();
                 } else {
-                  cy.log(`PASO 8: Contenedor del producto no es realmente visible (CSS visibility: hidden), saltando este producto`);
+                  cy.log(`STEP 8: Product container is not really visible (CSS visibility: hidden), skipping this product`);
                   return cy.wrap(null);
                 }
               });
             } else {
-              cy.log(`PASO 7: No se encontró contenedor de producto`);
+              cy.log(`STEP 7: Product container not found`);
               return cy.wrap(null);
             }
           });
       });
     });
     
-    cy.log(`PASO FINAL: Todos los ${selectedElements.length} productos procesados exitosamente en la grid`);
+    cy.log(`FINAL STEP: All ${selectedElements.length} products processed successfully in the grid`);
   });
 });

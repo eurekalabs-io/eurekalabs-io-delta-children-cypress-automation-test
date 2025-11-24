@@ -13,17 +13,19 @@ const sets = require("../fixtures/NurserySets.json");
 
 beforeEach(() => {
   cy.visit("https://www.deltachildren.com/pages/bundles");
+  // Accept cookie banner if it appears
+  cy.acceptCookieBannerIfPresent();
   // cy.waitForCollectionGrid();
   cy.scrollTo(0, 0);
   cy.window().then((win) => win.scrollTo(0, 0));
   
-  // Esperar a que la página cargue completamente antes de buscar botones
+  // Wait for the page to load completely before searching for buttons
   cy.get('body', { timeout: 30000 }).should('exist');
   
-  // Seleccionar aleatoriamente uno de los botones "create your set"
-  // Buscar de manera flexible para evitar timeouts
+  // Randomly select one of the "create your set" buttons
+  // Search flexibly to avoid timeouts
   cy.get('body').then(($body) => {
-    // Primero buscar por clase específica
+    // First search by specific class
     const buttonsByClass = $body.find('a.js-create-set-button, button.js-create-set-button');
     
     if (buttonsByClass.length > 0) {
@@ -31,9 +33,9 @@ beforeEach(() => {
       const randomIndex = Math.floor(Math.random() * buttons.length);
       const randomButton = buttons[randomIndex];
       cy.wrap(randomButton).click({ force: true });
-      cy.log(`Botón "create your set" seleccionado aleatoriamente (${randomIndex + 1} de ${buttons.length})`);
+      cy.log(`"Create your set" button randomly selected (${randomIndex + 1} of ${buttons.length})`);
     } else {
-      // Buscar por texto alternativo si no se encuentran con la clase
+      // Search by alternative text if not found with class
       const $allButtons = $body.find('a, button').filter((i, el) => {
         const text = Cypress.$(el).text().toLowerCase();
         return text.includes('create') || text.includes('set') || text.includes('bundle');
@@ -43,14 +45,14 @@ beforeEach(() => {
         const buttons = $allButtons.toArray();
         const randomIndex = Math.floor(Math.random() * buttons.length);
         cy.wrap(buttons[randomIndex]).click({ force: true });
-        cy.log(`Botón "create your set" seleccionado por texto (${randomIndex + 1} de ${buttons.length})`);
+        cy.log(`"Create your set" button selected by text (${randomIndex + 1} of ${buttons.length})`);
       } else {
-        // Si no se encuentra ningún botón, esperar un momento y verificar la URL
-        // Puede que la página ya haya redirigido o el botón aparezca más tarde
+        // If no button is found, wait a moment and verify the URL
+        // The page may have already redirected or the button may appear later
         cy.wait(2000);
         cy.url().then((url) => {
           if (!url.includes('/products/')) {
-            cy.log('No se encontró botón "create your set", pero la página puede estar cargando...');
+            cy.log('"Create your set" button not found, but page may be loading...');
           }
         });
       }
@@ -60,43 +62,43 @@ beforeEach(() => {
 
 it("select nursery sets", () => {
   cy.wrap(sets).each((data) => {
-    // Verificar la URL solo si no estamos ya en el carrito
-    // Después de agregar productos, la URL puede cambiar a /cart
+    // Verify URL only if we're not already in the cart
+    // After adding products, the URL may change to /cart
     cy.url().then((currentUrl) => {
       if (!currentUrl.includes('/cart')) {
-        // Si no estamos en el carrito, esperar que la página del producto cargue
+        // If we're not in the cart, wait for the product page to load
         cy.url({ timeout: 30000 }).should('include', '/products/');
         
-        // Esperar que el contenedor de componentes esté presente antes de buscar el botón
+        // Wait for the components container to be present before searching for the button
         cy.get('.components-section', { timeout: 30000 })
           .should('exist')
           .and('be.visible');
 
-        // Los productos se cargarán dinámicamente, selectProducts() los manejará
-        // No necesitamos verificar aquí para evitar logs innecesarios
+        // Products will load dynamically, selectProducts() will handle them
+        // We don't need to verify here to avoid unnecessary logs
         
-        // El botón addProducts aparece dinámicamente después de hacer click en un producto
-        // Por lo tanto, no lo verificamos aquí, se maneja dentro de selectProducts()
-        // selectProducts() manejará la búsqueda de productos de forma robusta
+        // The addProducts button appears dynamically after clicking on a product
+        // Therefore, we don't verify it here, it's handled inside selectProducts()
+        // selectProducts() will handle product search robustly
         
         ProductDetailsPage.selectProducts();
         ProductDetailsPage.bundleAddCart();
         
-        // Esperar un momento para que aparezca la pantalla de add-ons si existe
+        // Wait a moment for the add-ons screen to appear if it exists
         BasePage.pause(2000);
         
-        // Manejar add-ons y proceder al carrito si están presentes
+        // Handle add-ons and proceed to cart if present
         CartPage.selectAddOns();
         CartPage.proceedToCart();
       } else {
-        // Si ya estamos en el carrito, significa que el producto anterior redirigió
-        // Continuar con la siguiente iteración
-        cy.log('Ya estamos en el carrito, continuando...');
+        // If we're already in the cart, it means the previous product redirected
+        // Continue with the next iteration
+        cy.log('Already in cart, continuing...');
       }
     });
     
     // Verify cart action completed with multiple fallback selectors
-    // Esto funciona tanto si estamos en /products/ como en /cart
+    // This works whether we're in /products/ or /cart
     cy.get('body').then(($body) => {
       const cartIndicators = [
         '.cart-count',
@@ -108,7 +110,7 @@ it("select nursery sets", () => {
         '[aria-label*="Cart"]'
       ];
       
-      // Buscar indicadores del carrito por selector CSS
+      // Search for cart indicators by CSS selector
       const foundIndicator = cartIndicators.find(selector => {
         try {
           return $body.find(selector).length > 0;
@@ -120,7 +122,7 @@ it("select nursery sets", () => {
       if (foundIndicator) {
         cy.get(foundIndicator, { timeout: 15000 }).should('exist');
       } else {
-        // Fallback: buscar por texto "Cart" en cualquier elemento (case-insensitive)
+        // Fallback: search by "Cart" text in any element (case-insensitive)
         cy.contains('Cart', { timeout: 15000, matchCase: false }).should('exist');
       }
     });

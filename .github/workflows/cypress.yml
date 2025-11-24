@@ -93,6 +93,19 @@ jobs:
           name: cypress-videos
           path: Cypress/videos
           retention-days: 7
+      
+      - name: Send Slack notification
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+        run: |
+          node scripts/slack-notifier.js || echo "Slack notification failed, but continuing..."
 
 
 

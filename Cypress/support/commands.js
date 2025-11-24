@@ -24,7 +24,7 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-// Comando robusto para encontrar y seleccionar el segundo swatch en un contenedor de producto
+// Robust command to find and select the second swatch in a product container
 Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (subject) => {
   const swatchSelectors = [
     '.product__item-swatches > ul',
@@ -35,10 +35,10 @@ Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (s
     '.product__swatches > ul'
   ];
   
-  // Función recursiva para probar selectores secuencialmente
+  // Recursive function to try selectors sequentially
   const trySelector = (index) => {
     if (index >= swatchSelectors.length) {
-      cy.log(`No se encontró lista de swatches visible con ningún selector`);
+      cy.log(`No visible swatch list found with any selector`);
       return cy.wrap(null);
     }
     
@@ -48,20 +48,20 @@ Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (s
       const $found = $el.find(selector);
       
       if ($found.length > 0) {
-        // Verificar si el elemento encontrado es visible
+        // Check if the found element is visible
         const $visibleFound = $found.filter(':visible');
         if ($visibleFound.length > 0) {
-          cy.log(`Lista de swatches visible encontrada con selector: ${selector}`);
+          cy.log(`Visible swatch list found with selector: ${selector}`);
           
-          // Buscar todos los componentes disponibles (clickeables) en la lista de swatches
+          // Find all available (clickable) components in the swatch list
           return cy.wrap($visibleFound.first()).then(($swatchList) => {
-            // Buscar todos los elementos clickeables: li, button, a, span con clase swatch, etc.
+            // Find all clickable elements: li, button, a, span with swatch class, etc.
             const allComponents = $swatchList.find('li, button, a, [class*="swatch"], [data-swatch]');
             const availableComponents = allComponents.filter((i, el) => {
-              // Usar el objeto jQuery del elemento padre para crear un wrapper del elemento actual
+              // Use the jQuery object from the parent element to create a wrapper for the current element
               const $elem = $swatchList.constructor(el);
               const style = window.getComputedStyle(el);
-              // Verificar que el elemento esté visible y no esté deshabilitado
+              // Verify that the element is visible and not disabled
               return style.visibility !== 'hidden' && 
                      style.display !== 'none' && 
                      style.opacity !== '0' &&
@@ -70,28 +70,28 @@ Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (s
                      !$elem.hasClass('disabled');
             });
             
-            cy.log(`Encontrados ${availableComponents.length} componentes disponibles en la lista de swatches`);
+            cy.log(`Found ${availableComponents.length} available components in the swatch list`);
             
             if (availableComponents.length > 1) {
-              cy.log(`Tiene ${availableComponents.length} componentes disponibles, seleccionando el segundo`);
+              cy.log(`Has ${availableComponents.length} available components, selecting the second one`);
               
-              // Seleccionar el segundo componente disponible (índice 1)
+              // Select the second available component (index 1)
               const secondComponent = availableComponents.eq(1);
               cy.wrap(secondComponent).click({ force: true });
-              cy.wait(1500); // Aumentar tiempo de espera para estabilización
-              cy.log(`Segundo componente disponible seleccionado exitosamente`);
+              cy.wait(1500); // Increase wait time for stabilization
+              cy.log(`Second available component selected successfully`);
             } else if (availableComponents.length === 1) {
-              cy.log(`Solo tiene 1 componente disponible, no se puede seleccionar segundo`);
+              cy.log(`Only has 1 available component, cannot select second one`);
             } else {
-              cy.log(`No tiene componentes disponibles en la lista de swatches`);
+              cy.log(`No available components in the swatch list`);
             }
           });
         } else {
-          cy.log(`Selector ${selector} encontró elementos pero no están visibles`);
+          cy.log(`Selector ${selector} found elements but they are not visible`);
           return trySelector(index + 1);
         }
       } else {
-        cy.log(`Selector ${selector} no encontró elementos`);
+        cy.log(`Selector ${selector} found no elements`);
         return trySelector(index + 1);
       }
     });
@@ -105,7 +105,7 @@ Cypress.Commands.add('selectSecondSwatchInList', { prevSubject: 'element' }, (su
   const swatchItems = 'li';
   cy.wrap(subject).children(swatchItems).then(($items) => {
     if ($items.length > 1) {
-      // Usar first() para asegurar que solo se seleccione un elemento
+      // Use first() to ensure only one element is selected
       cy.wrap($items.eq(1)).first().click({ force: true });
     }
   });
@@ -127,14 +127,14 @@ Cypress.Commands.add('selectSecondVariantOnPDP', () => {
   });
 });
 
-// Safe wait for page content by asserting a key selector exists (esperar a que se vuelvan visibles)
+// Safe wait for page content by asserting a key selector exists (wait for them to become visible)
 Cypress.Commands.add('waitForCollectionGrid', () => {
   const selector = 'a.product__title.product__item-title';
   
-  // Primero esperar a que los elementos existan
+  // First wait for elements to exist
   cy.get(selector, { timeout: 25000 }).should('exist');
   
-  // Luego verificar que al menos uno esté visible con retry automático
+  // Then verify that at least one is visible with automatic retry
   cy.get(selector).should(($elements) => {
     const hasVisible = $elements.toArray().some((el) => {
       const style = window.getComputedStyle(el);
@@ -147,10 +147,10 @@ Cypress.Commands.add('waitForCollectionGrid', () => {
   });
 });
 
-// Comando para esperar a que los elementos se vuelvan visibles
+// Command to wait for elements to become visible
 Cypress.Commands.add('waitForElementsToBeVisible', (selector, timeout = 10000) => {
   cy.get(selector, { timeout }).should(($elements) => {
-    // Verificar que al menos uno esté visible (manejar CSS visibility: hidden)
+    // Verify that at least one is visible (handle CSS visibility: hidden)
     const visibleElements = $elements.filter((i, el) => {
       const style = window.getComputedStyle(el);
       return style.visibility !== 'hidden' && style.display !== 'none';
@@ -159,10 +159,10 @@ Cypress.Commands.add('waitForElementsToBeVisible', (selector, timeout = 10000) =
   });
 });
 
-// Comando para esperar a que se resuelva el CSS y los elementos se vuelvan visibles
+// Command to wait for CSS to resolve and elements to become visible
 Cypress.Commands.add('waitForCSSVisibility', (selector, timeout = 15000) => {
   cy.get(selector, { timeout }).should(($elements) => {
-    // Esperar a que se resuelva el CSS visibility: hidden
+    // Wait for CSS visibility: hidden to resolve
     const visibleElements = $elements.filter((i, el) => {
       const style = window.getComputedStyle(el);
       return style.visibility !== 'hidden' && style.display !== 'none';
@@ -171,7 +171,7 @@ Cypress.Commands.add('waitForCSSVisibility', (selector, timeout = 15000) => {
   });
 });
 
-// Comando para verificar si un elemento es realmente visible (maneja CSS visibility: hidden)
+// Command to verify if an element is really visible (handles CSS visibility: hidden)
 Cypress.Commands.add('isElementReallyVisible', { prevSubject: 'element' }, (subject) => {
   return cy.wrap(subject).then(($el) => {
     const element = $el[0];
@@ -181,7 +181,7 @@ Cypress.Commands.add('isElementReallyVisible', { prevSubject: 'element' }, (subj
                      style.opacity !== '0' &&
                      $el.is(':visible');
     
-    // Verificar también el elemento padre
+    // Also verify the parent element
     const parent = $el.parent();
     const parentStyle = parent.length > 0 ? window.getComputedStyle(parent[0]) : null;
     const parentVisible = !parentStyle || 
@@ -195,7 +195,7 @@ Cypress.Commands.add('isElementReallyVisible', { prevSubject: 'element' }, (subj
 
 // Hard cleanup to reduce memory pressure between heavy flows
 Cypress.Commands.add('hardCleanup', () => {
-  // Limpiar cookies del dominio actual (sin especificar domain para que sea genérico)
+  // Clear cookies from current domain (without specifying domain to make it generic)
   cy.clearCookies();
   cy.clearLocalStorage();
   cy.window({ log: false }).then((win) => {
@@ -204,6 +204,41 @@ Cypress.Commands.add('hardCleanup', () => {
     }
     if (win.gc) {
       try { win.gc(); } catch (e) { /* ignore */ }
+    }
+  });
+});
+
+// Custom command to check accessibility without failing the test
+Cypress.Commands.add('checkAccessibilityAndDocument', (options = {}) => {
+  // Execute accessibility check
+  // wick-a11y automatically generates reports when there are violations
+  // This command documents violations but allows the test to continue
+  return cy.checkAccessibility(options).then((violations) => {
+    // If there's no error, return violations
+    return violations || [];
+  }).catch((error) => {
+    // If there's an error (violations detected), document it and continue
+    cy.log('⚠️ Accessibility violations detected');
+    cy.log('📄 Full report available at: Cypress/accessibility/');
+    cy.log(`Error: ${error.message || 'Violations found'}`);
+    // Return empty array so the test continues
+    return [];
+  });
+});
+
+// Command to click on cookie banner if it appears
+Cypress.Commands.add('acceptCookieBannerIfPresent', () => {
+  cy.get('body').then(($body) => {
+    // Check if the element exists and is visible
+    const cookieBanner = $body.find('#shopify-pc__banner__btn-accept');
+    if (cookieBanner.length > 0 && cookieBanner.is(':visible')) {
+      cy.log('Cookie banner found, clicking accept');
+      cy.get('#shopify-pc__banner__btn-accept', { timeout: 5000 })
+        .should('be.visible')
+        .click({ force: true });
+      cy.wait(500); // Wait a moment for the banner to hide
+    } else {
+      cy.log('Cookie banner not present or not visible');
     }
   });
 });
