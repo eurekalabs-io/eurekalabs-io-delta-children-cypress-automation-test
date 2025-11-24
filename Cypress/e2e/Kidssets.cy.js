@@ -68,8 +68,10 @@ describe('Kids Sets Collection Tests', () => {
     });
   });
 
-  it("select kids sets", () => {
-    cy.wrap(sets).each((data) => {
+  // Use describe.each() to create a separate test for each set in the array
+  // This ensures each iteration is registered as a separate test in Cypress reports
+  describe.each(sets)('Select kids set - $category', (data) => {
+    it(`should select kids set for ${data.category} - ${data.subcategory}`, () => {
       // Verify URL and handle different cases
       cy.url().then((currentUrl) => {
         // If we're already in the cart, continue

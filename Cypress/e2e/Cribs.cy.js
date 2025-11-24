@@ -45,7 +45,7 @@ describe('Cribs Collection Tests', () => {
     });
   });
 
-  it("Select Crib PDP second variant for each product", () => {
+  it("should select second variant on PDP for multiple random crib products", () => {
     // STEP 1: Find all products on the cribs page
     cy.get('a.product__title.product__item-title').then(($elements) => {
       cy.log(`STEP 1: Found ${$elements.length} products on the cribs page`);
@@ -97,7 +97,7 @@ describe('Cribs Collection Tests', () => {
   });
 
 
-  it("Select second variant on collection for items with multiple swatches", () => {
+  it("should select second variant on collection grid for items with multiple swatches", () => {
     // STEP 1: Find all products on the cribs page
     cy.get('a.product__title.product__item-title').then(($elements) => {
       cy.log(`STEP 1: Found ${$elements.length} products on the cribs page`);
