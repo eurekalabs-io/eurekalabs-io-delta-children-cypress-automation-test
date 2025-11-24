@@ -163,3 +163,4 @@ describe('Kids Sets Collection Tests', () => {
       cy.hardCleanup();
     });
   });
+});
