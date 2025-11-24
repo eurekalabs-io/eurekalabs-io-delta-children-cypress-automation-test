@@ -236,6 +236,13 @@ function getTestSuitesSummary(results) {
       // Use file name as suite title if no title exists (for tests without describe blocks)
       const displayTitle = fullTitle || fileName || 'Unknown Suite';
       
+      // Log file information for debugging
+      if (filePath || fileName) {
+        console.log(`   ✅ Adding suite "${displayTitle}" with file: ${fileName || filePath}`);
+      } else {
+        console.log(`   ⚠️ Adding suite "${displayTitle}" WITHOUT file information`);
+      }
+      
       suites.push({
         title: displayTitle,
         file: fileName,
@@ -258,7 +265,13 @@ function getTestSuitesSummary(results) {
   };
   
   // Process all top-level suites
-  results.results.forEach(suite => {
+  console.log(`📋 Processing ${results.results.length} top-level result(s)...`);
+  results.results.forEach((suite, idx) => {
+    console.log(`   Top-level result ${idx + 1}:`);
+    console.log(`     Title: ${suite.title || suite.fullTitle || 'N/A'}`);
+    console.log(`     File: ${suite.file || 'N/A'}`);
+    console.log(`     Has suites: ${!!(suite.suites && suite.suites.length > 0)}`);
+    console.log(`     Has tests: ${!!(suite.tests && suite.tests.length > 0)}`);
     extractTestsFromSuite(suite);
   });
   
@@ -430,24 +443,28 @@ function extractAccessibilityViolations(test) {
 function getTestFiles(suites, results = null) {
   const files = new Set();
   
+  console.log('🔍 Extracting test files...');
+  console.log(`   Processing ${suites.length} suite(s)`);
+  
   // Function to recursively extract files from suites and tests
   const extractFiles = (suite) => {
     // Add file from suite if available (can be basename or full path)
     if (suite.file) {
-      // If it's already a basename, use it directly
-      // If it's a full path, we'll convert it later
+      console.log(`   Found file in suite "${suite.title}": ${suite.file}`);
       files.add(suite.file);
     }
     
     // Add file from filePath if available (usually full path)
     if (suite.filePath) {
+      console.log(`   Found filePath in suite "${suite.title}": ${suite.filePath}`);
       files.add(suite.filePath);
     }
     
     // Check tests for file information
     if (suite.tests && Array.isArray(suite.tests)) {
-      suite.tests.forEach(test => {
+      suite.tests.forEach((test, idx) => {
         if (test.file) {
+          console.log(`   Found file in test "${test.title || idx}": ${test.file}`);
           files.add(test.file);
         }
       });
@@ -455,45 +472,63 @@ function getTestFiles(suites, results = null) {
   };
   
   // Extract files from all suites
-  suites.forEach(suite => {
+  suites.forEach((suite, idx) => {
+    console.log(`   Processing suite ${idx + 1}: "${suite.title}"`);
+    console.log(`     File: ${suite.file || 'N/A'}`);
+    console.log(`     FilePath: ${suite.filePath || 'N/A'}`);
+    console.log(`     Tests: ${suite.tests ? suite.tests.length : 0}`);
     extractFiles(suite);
   });
   
-  // If no files found in suites, try to extract from results directly
-  if (files.size === 0 && results && results.results && Array.isArray(results.results)) {
-    results.results.forEach(result => {
-      if (result.file) {
-        files.add(result.file);
+  // ALWAYS try to extract from results directly (more reliable)
+  // This ensures we get files even if suites don't have them properly set
+  if (results && results.results && Array.isArray(results.results)) {
+    console.log(`   Searching in results.results (${results.results.length} top-level results)...`);
+    
+    // Recursive function to extract files from any level
+    const extractFromResults = (item, level = 0) => {
+      const indent = '  '.repeat(level);
+      
+      if (item.file) {
+        console.log(`${indent}Found file at level ${level}: ${item.file}`);
+        files.add(item.file);
       }
-      // Also check nested suites
-      if (result.suites && Array.isArray(result.suites)) {
-        const extractFromNested = (suite) => {
-          if (suite.file) {
-            files.add(suite.file);
-          }
-          if (suite.tests && Array.isArray(suite.tests)) {
-            suite.tests.forEach(test => {
-              if (test.file) {
-                files.add(test.file);
-              }
-            });
-          }
-          if (suite.suites && Array.isArray(suite.suites)) {
-            suite.suites.forEach(extractFromNested);
-          }
-        };
-        result.suites.forEach(extractFromNested);
+      
+      // Check nested suites
+      if (item.suites && Array.isArray(item.suites)) {
+        console.log(`${indent}Found ${item.suites.length} nested suite(s)`);
+        item.suites.forEach((nestedSuite, idx) => {
+          console.log(`${indent}  Suite ${idx + 1}: "${nestedSuite.title || 'N/A'}" - File: ${nestedSuite.file || 'N/A'}`);
+          extractFromResults(nestedSuite, level + 1);
+        });
       }
-      // Check tests at top level
-      if (result.tests && Array.isArray(result.tests)) {
-        result.tests.forEach(test => {
+      
+      // Check tests at this level
+      if (item.tests && Array.isArray(item.tests)) {
+        console.log(`${indent}Found ${item.tests.length} test(s) at this level`);
+        item.tests.forEach((test, idx) => {
           if (test.file) {
+            console.log(`${indent}  Test ${idx + 1} file: ${test.file}`);
             files.add(test.file);
           }
         });
       }
+    };
+    
+    results.results.forEach((result, idx) => {
+      console.log(`   Top-level result ${idx + 1}:`);
+      console.log(`     Title: ${result.title || result.fullTitle || 'N/A'}`);
+      console.log(`     File: ${result.file || 'N/A'}`);
+      console.log(`     Has suites: ${!!(result.suites && result.suites.length > 0)}`);
+      console.log(`     Has tests: ${!!(result.tests && result.tests.length > 0)}`);
+      extractFromResults(result, 1);
     });
   }
+  
+  console.log(`📁 Total unique files found: ${files.size}`);
+  Array.from(files).forEach((file, idx) => {
+    console.log(`   File ${idx + 1}: ${file}`);
+  });
   
   // Convert to array of basenames, filtering out empty strings
   const fileNames = Array.from(files)
@@ -502,13 +537,18 @@ function getTestFiles(suites, results = null) {
       // If file already looks like a basename (no path separators), use it as is
       // Otherwise, extract basename
       if (file.includes(path.sep) || file.includes('/') || file.includes('\\')) {
-        return path.basename(file);
+        const basename = path.basename(file);
+        console.log(`   Converting "${file}" -> "${basename}"`);
+        return basename;
       }
       return file;
     });
   
   // Remove duplicates and sort alphabetically
-  return [...new Set(fileNames)].sort();
+  const uniqueFiles = [...new Set(fileNames)].sort();
+  console.log(`📁 Final unique file names: ${uniqueFiles.join(', ')}`);
+  
+  return uniqueFiles;
 }
 
 /**
