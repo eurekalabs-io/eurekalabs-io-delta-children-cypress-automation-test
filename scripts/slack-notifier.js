@@ -210,32 +210,114 @@ function getTestSuitesSummary(results) {
 
 /**
  * Format test details for Slack
+ * Shows all tests and subtests with their status
  */
 function formatTestDetails(suites) {
   if (!suites || suites.length === 0) {
     return 'No test details available.';
   }
 
+  const MAX_LENGTH = 3500; // Slack limit is 4000, leave some buffer
   let details = '';
+  let totalTestsShown = 0;
+  let totalTestsSkipped = 0;
   
   suites.forEach((suite, index) => {
     const statusEmoji = suite.failed > 0 ? '❌' : suite.passed > 0 ? '✅' : '⏸️';
-    details += `\n*${statusEmoji} ${suite.title}*\n`;
-    details += `   Tests: ${suite.total} | ✅ ${suite.passed} | ❌ ${suite.failed} | ⏸️ ${suite.pending} | ⏱️ ${formatDuration(suite.duration)}\n`;
+    const suiteHeader = `\n*${statusEmoji} ${suite.title}*\n`;
+    const suiteSummary = `   Tests: ${suite.total} | ✅ ${suite.passed} | ❌ ${suite.failed} | ⏸️ ${suite.pending} | ⏱️ ${formatDuration(suite.duration)}\n`;
     
-    // Show failed tests if any
-    if (suite.failed > 0) {
-      const failedTests = suite.tests.filter(t => t.state === 'failed');
-      failedTests.slice(0, 3).forEach(test => {
-        const errorMsg = test.err?.message || 'Unknown error';
-        const shortError = errorMsg.length > 80 ? errorMsg.substring(0, 80) + '...' : errorMsg;
-        details += `   ❌ *${test.title}*: \`${shortError}\`\n`;
+    // Check if adding suite header would exceed limit
+    if (details.length + suiteHeader.length + suiteSummary.length > MAX_LENGTH) {
+      totalTestsSkipped += suite.total;
+      return;
+    }
+    
+    details += suiteHeader + suiteSummary;
+    
+    // Show all tests with their status
+    if (suite.tests && suite.tests.length > 0) {
+      suite.tests.forEach(test => {
+        const testStatusEmoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
+        const testTitle = test.title || 'Unnamed Test';
+        const testDuration = test.duration ? ` (${formatDuration(test.duration)})` : '';
+        const testLine = `   ${testStatusEmoji} *${testTitle}*${testDuration}\n`;
+        
+        // Check if adding this test would exceed limit
+        if (details.length + testLine.length > MAX_LENGTH) {
+          totalTestsSkipped++;
+          return;
+        }
+        
+        details += testLine;
+        totalTestsShown++;
+        
+        // Show error message for failed tests
+        if (test.state === 'failed' && test.err) {
+          const errorMsg = test.err.message || 'Unknown error';
+          const shortError = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
+          const errorLine = `      └─ Error: \`${shortError}\`\n`;
+          
+          if (details.length + errorLine.length <= MAX_LENGTH) {
+            details += errorLine;
+          }
+        }
+        
+        // Show subtests if they exist (check for nested test structure or hooks)
+        if (test.tests && Array.isArray(test.tests) && test.tests.length > 0) {
+          test.tests.forEach(subtest => {
+            const subtestStatusEmoji = subtest.state === 'passed' ? '✅' : subtest.state === 'failed' ? '❌' : '⏸️';
+            const subtestTitle = subtest.title || 'Unnamed Subtest';
+            const subtestDuration = subtest.duration ? ` (${formatDuration(subtest.duration)})` : '';
+            const subtestLine = `      ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
+            
+            // Check if adding this subtest would exceed limit
+            if (details.length + subtestLine.length > MAX_LENGTH) {
+              totalTestsSkipped++;
+              return;
+            }
+            
+            details += subtestLine;
+            totalTestsShown++;
+            
+            // Show error message for failed subtests
+            if (subtest.state === 'failed' && subtest.err) {
+              const subtestErrorMsg = subtest.err.message || 'Unknown error';
+              const shortSubtestError = subtestErrorMsg.length > 100 ? subtestErrorMsg.substring(0, 100) + '...' : subtestErrorMsg;
+              const subtestErrorLine = `         └─ Error: \`${shortSubtestError}\`\n`;
+              
+              if (details.length + subtestErrorLine.length <= MAX_LENGTH) {
+                details += subtestErrorLine;
+              }
+            }
+          });
+        }
+        
+        // Also check for hooks (beforeEach, afterEach, etc.) which might be considered subtests
+        if (test.hooks && Array.isArray(test.hooks) && test.hooks.length > 0) {
+          test.hooks.forEach(hook => {
+            if (hook.title && hook.title !== '') {
+              const hookStatusEmoji = hook.state === 'passed' ? '✅' : hook.state === 'failed' ? '❌' : '⏸️';
+              const hookTitle = hook.title;
+              const hookLine = `      ${hookStatusEmoji} *${hookTitle}*\n`;
+              
+              if (details.length + hookLine.length <= MAX_LENGTH) {
+                details += hookLine;
+                totalTestsShown++;
+              } else {
+                totalTestsSkipped++;
+              }
+            }
+          });
+        }
       });
-      if (failedTests.length > 3) {
-        details += `   _...and ${failedTests.length - 3} more failed tests_\n`;
-      }
     }
   });
+  
+  // Add note if some tests were skipped due to length limit
+  if (totalTestsSkipped > 0) {
+    details += `\n_...y ${totalTestsSkipped} test(s) adicional(es) (ver reporte completo para detalles)_\n`;
+  }
   
   return details;
 }
