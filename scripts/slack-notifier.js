@@ -201,8 +201,25 @@ function getTestSuitesSummary(results) {
     const fullTitle = parentTitle ? `${parentTitle} > ${suiteTitle}` : suiteTitle;
     
     // Get file path (prefer current suite's file, fallback to parent's file)
-    const filePath = suite.file || parentFile || '';
-    const fileName = filePath ? path.basename(filePath) : '';
+    // Also check if parentFile is a full path and extract basename if needed
+    let filePath = suite.file || parentFile || '';
+    
+    // If we have a parent file but current suite doesn't have one, use parent
+    if (!suite.file && parentFile) {
+      filePath = parentFile;
+    }
+    
+    // Extract filename - handle both full paths and basenames
+    let fileName = '';
+    if (filePath) {
+      // If it looks like a full path, extract basename
+      if (filePath.includes(path.sep) || filePath.includes('/') || filePath.includes('\\')) {
+        fileName = path.basename(filePath);
+      } else {
+        // Already a basename
+        fileName = filePath;
+      }
+    }
     
     // Get tests from this suite
     const suiteTests = suite.tests || [];
@@ -232,9 +249,11 @@ function getTestSuitesSummary(results) {
       });
     }
     
-    // Process nested suites recursively
+    // Process nested suites recursively, passing the file path
     nestedSuites.forEach(nestedSuite => {
-      extractTestsFromSuite(nestedSuite, fullTitle, filePath);
+      // Ensure nested suites inherit the file path if they don't have one
+      const nestedFilePath = nestedSuite.file || filePath || parentFile;
+      extractTestsFromSuite(nestedSuite, fullTitle, nestedFilePath);
     });
   };
   
@@ -405,17 +424,91 @@ function extractAccessibilityViolations(test) {
 
 /**
  * Get list of test files executed
+ * Searches in suites, nested suites, and tests to find all file names
+ * Also extracts files directly from results if suites don't have file info
  */
-function getTestFiles(suites) {
+function getTestFiles(suites, results = null) {
   const files = new Set();
   
-  suites.forEach(suite => {
+  // Function to recursively extract files from suites and tests
+  const extractFiles = (suite) => {
+    // Add file from suite if available (can be basename or full path)
     if (suite.file) {
+      // If it's already a basename, use it directly
+      // If it's a full path, we'll convert it later
       files.add(suite.file);
     }
+    
+    // Add file from filePath if available (usually full path)
+    if (suite.filePath) {
+      files.add(suite.filePath);
+    }
+    
+    // Check tests for file information
+    if (suite.tests && Array.isArray(suite.tests)) {
+      suite.tests.forEach(test => {
+        if (test.file) {
+          files.add(test.file);
+        }
+      });
+    }
+  };
+  
+  // Extract files from all suites
+  suites.forEach(suite => {
+    extractFiles(suite);
   });
   
-  return Array.from(files).map(file => path.basename(file));
+  // If no files found in suites, try to extract from results directly
+  if (files.size === 0 && results && results.results && Array.isArray(results.results)) {
+    results.results.forEach(result => {
+      if (result.file) {
+        files.add(result.file);
+      }
+      // Also check nested suites
+      if (result.suites && Array.isArray(result.suites)) {
+        const extractFromNested = (suite) => {
+          if (suite.file) {
+            files.add(suite.file);
+          }
+          if (suite.tests && Array.isArray(suite.tests)) {
+            suite.tests.forEach(test => {
+              if (test.file) {
+                files.add(test.file);
+              }
+            });
+          }
+          if (suite.suites && Array.isArray(suite.suites)) {
+            suite.suites.forEach(extractFromNested);
+          }
+        };
+        result.suites.forEach(extractFromNested);
+      }
+      // Check tests at top level
+      if (result.tests && Array.isArray(result.tests)) {
+        result.tests.forEach(test => {
+          if (test.file) {
+            files.add(test.file);
+          }
+        });
+      }
+    });
+  }
+  
+  // Convert to array of basenames, filtering out empty strings
+  const fileNames = Array.from(files)
+    .filter(file => file && file.trim() !== '')
+    .map(file => {
+      // If file already looks like a basename (no path separators), use it as is
+      // Otherwise, extract basename
+      if (file.includes(path.sep) || file.includes('/') || file.includes('\\')) {
+        return path.basename(file);
+      }
+      return file;
+    });
+  
+  // Remove duplicates and sort alphabetically
+  return [...new Set(fileNames)].sort();
 }
 
 /**
@@ -596,7 +689,7 @@ function createSlackMessage(summary, results) {
   // Get test suites summary
   const suites = getTestSuitesSummary(results);
   const testDetails = formatTestDetails(suites);
-  const testFiles = getTestFiles(suites);
+  const testFiles = getTestFiles(suites, results);
   
   // Debug logging
   console.log(`📋 Found ${suites.length} test suite(s)`);
