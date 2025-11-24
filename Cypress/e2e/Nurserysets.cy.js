@@ -61,9 +61,9 @@ describe('Nursery Sets Collection Tests', () => {
     });
   });
 
-  // Use describe.each() to create a separate test for each set in the array
+  // Create a separate test for each set in the array
   // This ensures each iteration is registered as a separate test in Cypress reports
-  describe.each(sets)('Select nursery set - $category', (data) => {
+  sets.forEach((data, index) => {
     it(`should select nursery set for ${data.category} - ${data.subcategory}`, () => {
       // Verify URL only if we're not already in the cart
       // After adding products, the URL may change to /cart

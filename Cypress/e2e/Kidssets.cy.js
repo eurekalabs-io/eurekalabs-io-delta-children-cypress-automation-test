@@ -68,9 +68,9 @@ describe('Kids Sets Collection Tests', () => {
     });
   });
 
-  // Use describe.each() to create a separate test for each set in the array
+  // Create a separate test for each set in the array
   // This ensures each iteration is registered as a separate test in Cypress reports
-  describe.each(sets)('Select kids set - $category', (data) => {
+  sets.forEach((data, index) => {
     it(`should select kids set for ${data.category} - ${data.subcategory}`, () => {
       // Verify URL and handle different cases
       cy.url().then((currentUrl) => {
@@ -163,4 +163,3 @@ describe('Kids Sets Collection Tests', () => {
       cy.hardCleanup();
     });
   });
-});
