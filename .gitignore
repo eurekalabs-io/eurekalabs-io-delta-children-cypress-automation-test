@@ -1,1 +1,26 @@
-node_modules
+# Cypress
+Cypress/reports/
+Cypress/screenshots/
+Cypress/videos/
+Cypress/accessibility/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local

@@ -9,12 +9,25 @@ module.exports = defineConfig({
     supportFile: 'Cypress/support/e2e.js',
     specPattern: 'Cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     fixturesFolder: 'Cypress/fixtures',
+    // Configure HTML reporter
+    reporter: 'mochawesome',
+    reporterOptions: {
+      reportDir: 'Cypress/reports',
+      overwrite: false,
+      html: true,
+      json: true,
+      timestamp: 'mmddyyyy_HHMMss',
+      reportFilename: '[name]-report',
+      charts: true,
+      code: false,
+      inline: true
+    },
     setupNodeEvents(on, config) {
          // Add accessibility tasks
       addAccessibilityTasks(on);
       // Reduce memory usage by disabling video
       config.video = false;
-      // Habilitar screenshots solo para tests de accesibilidad (se maneja en el test)
+      // Enable screenshots for accessibility tests (handled in test)
       config.screenshotOnRunFailure = true;
       return config;
     },

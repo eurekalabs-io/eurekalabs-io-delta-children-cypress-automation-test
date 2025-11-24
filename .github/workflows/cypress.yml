@@ -35,6 +35,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Install report dependencies
+        run: |
+          npm install --save-dev mochawesome mochawesome-merge mochawesome-report-generator
+      
       - name: Check if recording is enabled
         id: check-recording
         run: |
@@ -94,7 +98,32 @@ jobs:
           path: Cypress/videos
           retention-days: 7
       
-      - name: Send Slack notification
+      - name: Generate HTML test report
+        if: always()
+        env:
+          GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
+        run: |
+          node scripts/generate-report.js || echo "Report generation failed, but continuing..."
+      
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-html
+          path: Cypress/reports/merged/test-report.html
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      - name: Upload test summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary
+          path: Cypress/reports/merged/test-summary.md
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      - name: Send detailed Slack report
         if: always()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
