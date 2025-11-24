@@ -436,6 +436,30 @@ function extractAccessibilityViolations(test) {
 }
 
 /**
+ * Get all expected test files from e2e directory
+ * This serves as a reference to compare against found files
+ */
+function getExpectedTestFiles() {
+  const e2eDir = path.join(__dirname, '..', 'Cypress', 'e2e');
+  const expectedFiles = [];
+  
+  try {
+    if (fs.existsSync(e2eDir)) {
+      const files = fs.readdirSync(e2eDir);
+      files.forEach(file => {
+        if (file.endsWith('.cy.js') || file.endsWith('.cy.ts')) {
+          expectedFiles.push(file);
+        }
+      });
+    }
+  } catch (error) {
+    console.log(`⚠️ Could not read e2e directory: ${error.message}`);
+  }
+  
+  return expectedFiles.sort();
+}
+
+/**
  * Extract file names from suite/test titles as fallback
  * Looks for patterns like "Cribs Collection Tests", "Kids Sets Collection Tests", etc.
  */
@@ -849,6 +873,14 @@ function createSlackMessage(summary, results) {
   } else if (testFiles.length === 0 && fallbackFiles.length > 0) {
     console.log(`✅ Using ${fallbackFiles.length} file(s) from fallback extraction`);
     testFiles = fallbackFiles;
+  }
+  
+  // Compare with expected files for debugging
+  const expectedFiles = getExpectedTestFiles();
+  console.log(`📋 Expected test files in e2e directory: ${expectedFiles.join(', ')}`);
+  const missingFiles = expectedFiles.filter(f => !testFiles.includes(f));
+  if (missingFiles.length > 0) {
+    console.log(`⚠️ Files in e2e directory but not found in report: ${missingFiles.join(', ')}`);
   }
   
   const testDetails = formatTestDetails(suites, results);
