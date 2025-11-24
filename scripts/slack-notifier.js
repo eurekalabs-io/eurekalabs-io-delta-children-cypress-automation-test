@@ -436,6 +436,70 @@ function extractAccessibilityViolations(test) {
 }
 
 /**
+ * Extract file names from suite/test titles as fallback
+ * Looks for patterns like "Cribs Collection Tests", "Kids Sets Collection Tests", etc.
+ */
+function extractFilesFromTitles(suites, results = null) {
+  const filePatterns = {
+    'Cribs': 'Cribs.cy.js',
+    'Kids Sets': 'Kidssets.cy.js',
+    'Kids Set': 'Kidssets.cy.js',
+    'Nursery Sets': 'Nurserysets.cy.js',
+    'Nursery Set': 'Nurserysets.cy.js'
+  };
+  
+  const foundFiles = new Set();
+  
+  console.log('🔄 Trying fallback extraction from titles...');
+  
+  // Check suite titles
+  suites.forEach(suite => {
+    const title = suite.title || '';
+    Object.keys(filePatterns).forEach(pattern => {
+      if (title.includes(pattern)) {
+        console.log(`   Found pattern "${pattern}" in suite title: "${title}" -> ${filePatterns[pattern]}`);
+        foundFiles.add(filePatterns[pattern]);
+      }
+    });
+  });
+  
+  // Check results directly
+  if (results && results.results && Array.isArray(results.results)) {
+    const checkItem = (item) => {
+      const title = item.title || item.fullTitle || '';
+      Object.keys(filePatterns).forEach(pattern => {
+        if (title.includes(pattern)) {
+          console.log(`   Found pattern "${pattern}" in item title: "${title}" -> ${filePatterns[pattern]}`);
+          foundFiles.add(filePatterns[pattern]);
+        }
+      });
+      
+      if (item.suites && Array.isArray(item.suites)) {
+        item.suites.forEach(checkItem);
+      }
+      
+      if (item.tests && Array.isArray(item.tests)) {
+        item.tests.forEach(test => {
+          const testTitle = test.title || test.fullTitle || '';
+          Object.keys(filePatterns).forEach(pattern => {
+            if (testTitle.includes(pattern)) {
+              console.log(`   Found pattern "${pattern}" in test title: "${testTitle}" -> ${filePatterns[pattern]}`);
+              foundFiles.add(filePatterns[pattern]);
+            }
+          });
+        });
+      }
+    };
+    
+    results.results.forEach(checkItem);
+  }
+  
+  const files = Array.from(foundFiles).sort();
+  console.log(`📁 Fallback extraction found ${files.length} file(s): ${files.join(', ')}`);
+  return files;
+}
+
+/**
  * Get list of test files executed
  * Searches in suites, nested suites, and tests to find all file names
  * Also extracts files directly from results if suites don't have file info
@@ -555,7 +619,7 @@ function getTestFiles(suites, results = null) {
  * Format test details for Slack
  * Shows all tests and subtests with their status
  */
-function formatTestDetails(suites) {
+function formatTestDetails(suites, results = null) {
   if (!suites || suites.length === 0) {
     return 'No test details available.';
   }
@@ -566,7 +630,13 @@ function formatTestDetails(suites) {
   let totalTestsSkipped = 0;
   
   // Add test files executed section
-  const testFiles = getTestFiles(suites);
+  let testFiles = getTestFiles(suites, results);
+  if (testFiles.length === 0) {
+    // Fallback: try to extract file names from suite titles or test titles
+    console.log('⚠️ No files found via getTestFiles, trying fallback extraction...');
+    testFiles = extractFilesFromTitles(suites, results);
+  }
+  
   if (testFiles.length > 0) {
     details += '*📁 Test Files Executed:*\n';
     testFiles.forEach(file => {
@@ -728,8 +798,29 @@ function createSlackMessage(summary, results) {
 
   // Get test suites summary
   const suites = getTestSuitesSummary(results);
-  const testDetails = formatTestDetails(suites);
-  const testFiles = getTestFiles(suites, results);
+  let testFiles = getTestFiles(suites, results);
+  
+  // If no files found, try fallback method
+  if (testFiles.length === 0) {
+    console.log('⚠️ No files found via getTestFiles, trying fallback extraction from titles...');
+    const fallbackFiles = extractFilesFromTitles(suites, results);
+    if (fallbackFiles.length > 0) {
+      testFiles = fallbackFiles;
+      console.log(`✅ Using ${fallbackFiles.length} file(s) from fallback extraction`);
+    }
+  }
+  
+  const testDetails = formatTestDetails(suites, results);
+  
+  // If no files found, try fallback method
+  if (testFiles.length === 0) {
+    console.log('⚠️ No files found via getTestFiles, trying fallback extraction from titles...');
+    const fallbackFiles = extractFilesFromTitles(suites, results);
+    if (fallbackFiles.length > 0) {
+      testFiles = fallbackFiles;
+      console.log(`✅ Using ${fallbackFiles.length} file(s) from fallback extraction`);
+    }
+  }
   
   // Debug logging
   console.log(`📋 Found ${suites.length} test suite(s)`);
@@ -737,8 +828,8 @@ function createSlackMessage(summary, results) {
     console.log(`   Suite ${idx + 1}: ${suite.title} - ${suite.total} tests (${suite.passed} passed, ${suite.failed} failed)`);
   });
   console.log(`📝 Test details length: ${testDetails.length} characters`);
-  console.log(`📁 Test files executed: ${testFiles.join(', ')}`);
-
+  console.log(`📁 Test files executed: ${testFiles.join(', ') || 'NONE FOUND'}`);
+  
   // Create main attachment with summary
   const fields = [
     {
