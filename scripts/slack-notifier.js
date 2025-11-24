@@ -15,7 +15,7 @@ const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || 'Delta-Children';
 const GITHUB_RUN_ID = process.env.GITHUB_RUN_ID || '';
 const GITHUB_SHA = process.env.GITHUB_SHA || '';
 const GITHUB_REF = process.env.GITHUB_REF || 'main';
-const GITHUB_ACTOR = process.env.GITHUB_ACTOR || 'Unknown';
+const GITHUB_ACTOR = process.env.GITHUB_ACTOR || 'Delta Children';
 const GITHUB_WORKFLOW = process.env.GITHUB_WORKFLOW || 'Cypress Tests';
 
 // Colors for Slack messages
@@ -225,7 +225,7 @@ function formatTestDetails(suites) {
   suites.forEach((suite, index) => {
     const statusEmoji = suite.failed > 0 ? '❌' : suite.passed > 0 ? '✅' : '⏸️';
     const suiteHeader = `\n*${statusEmoji} ${suite.title}*\n`;
-    const suiteSummary = `   Tests: ${suite.total} | ✅ ${suite.passed} | ❌ ${suite.failed} | ⏸️ ${suite.pending} | ⏱️ ${formatDuration(suite.duration)}\n`;
+    const suiteSummary = `Tests: ${suite.total} | ✅ ${suite.passed} | ❌ ${suite.failed} | ⏸️ ${suite.pending} | ⏱️ ${formatDuration(suite.duration)}\n`;
     
     // Check if adding suite header would exceed limit
     if (details.length + suiteHeader.length + suiteSummary.length > MAX_LENGTH) {
@@ -239,9 +239,9 @@ function formatTestDetails(suites) {
     if (suite.tests && suite.tests.length > 0) {
       suite.tests.forEach(test => {
         const testStatusEmoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
-        const testTitle = test.title || 'Unnamed Test';
+        const testTitle = test.title || test.fullTitle || 'Unnamed Test';
         const testDuration = test.duration ? ` (${formatDuration(test.duration)})` : '';
-        const testLine = `   ${testStatusEmoji} *${testTitle}*${testDuration}\n`;
+        const testLine = `${testStatusEmoji} *${testTitle}*${testDuration}\n`;
         
         // Check if adding this test would exceed limit
         if (details.length + testLine.length > MAX_LENGTH) {
@@ -254,22 +254,22 @@ function formatTestDetails(suites) {
         
         // Show error message for failed tests
         if (test.state === 'failed' && test.err) {
-          const errorMsg = test.err.message || 'Unknown error';
-          const shortError = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
-          const errorLine = `      └─ Error: \`${shortError}\`\n`;
+          const errorMsg = test.err.message || test.err.estack || 'Unknown error';
+          const shortError = errorMsg.length > 150 ? errorMsg.substring(0, 150) + '...' : errorMsg;
+          const errorLine = `  └─ Error: ${shortError}\n`;
           
           if (details.length + errorLine.length <= MAX_LENGTH) {
             details += errorLine;
           }
         }
         
-        // Show subtests if they exist (check for nested test structure or hooks)
+        // Show subtests if they exist (check for nested test structure)
         if (test.tests && Array.isArray(test.tests) && test.tests.length > 0) {
           test.tests.forEach(subtest => {
             const subtestStatusEmoji = subtest.state === 'passed' ? '✅' : subtest.state === 'failed' ? '❌' : '⏸️';
-            const subtestTitle = subtest.title || 'Unnamed Subtest';
+            const subtestTitle = subtest.title || subtest.fullTitle || 'Unnamed Subtest';
             const subtestDuration = subtest.duration ? ` (${formatDuration(subtest.duration)})` : '';
-            const subtestLine = `      ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
+            const subtestLine = `  ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
             
             // Check if adding this subtest would exceed limit
             if (details.length + subtestLine.length > MAX_LENGTH) {
@@ -282,9 +282,9 @@ function formatTestDetails(suites) {
             
             // Show error message for failed subtests
             if (subtest.state === 'failed' && subtest.err) {
-              const subtestErrorMsg = subtest.err.message || 'Unknown error';
-              const shortSubtestError = subtestErrorMsg.length > 100 ? subtestErrorMsg.substring(0, 100) + '...' : subtestErrorMsg;
-              const subtestErrorLine = `         └─ Error: \`${shortSubtestError}\`\n`;
+              const subtestErrorMsg = subtest.err.message || subtest.err.estack || 'Unknown error';
+              const shortSubtestError = subtestErrorMsg.length > 150 ? subtestErrorMsg.substring(0, 150) + '...' : subtestErrorMsg;
+              const subtestErrorLine = `    └─ Error: ${shortSubtestError}\n`;
               
               if (details.length + subtestErrorLine.length <= MAX_LENGTH) {
                 details += subtestErrorLine;
@@ -299,7 +299,7 @@ function formatTestDetails(suites) {
             if (hook.title && hook.title !== '') {
               const hookStatusEmoji = hook.state === 'passed' ? '✅' : hook.state === 'failed' ? '❌' : '⏸️';
               const hookTitle = hook.title;
-              const hookLine = `      ${hookStatusEmoji} *${hookTitle}*\n`;
+              const hookLine = `  ${hookStatusEmoji} *${hookTitle}*\n`;
               
               if (details.length + hookLine.length <= MAX_LENGTH) {
                 details += hookLine;
@@ -311,6 +311,9 @@ function formatTestDetails(suites) {
           });
         }
       });
+    } else {
+      // If no tests in suite, add a note
+      details += `  (No tests found in this suite)\n`;
     }
   });
   
@@ -352,6 +355,13 @@ function createSlackMessage(summary, results) {
   // Get test suites summary
   const suites = getTestSuitesSummary(results);
   const testDetails = formatTestDetails(suites);
+  
+  // Debug logging
+  console.log(`📋 Found ${suites.length} test suite(s)`);
+  suites.forEach((suite, idx) => {
+    console.log(`   Suite ${idx + 1}: ${suite.title} - ${suite.total} tests (${suite.passed} passed, ${suite.failed} failed)`);
+  });
+  console.log(`📝 Test details length: ${testDetails.length} characters`);
 
   // Create main attachment with summary
   const fields = [
@@ -421,11 +431,18 @@ function createSlackMessage(summary, results) {
   ];
 
   // Add detailed test results as a second attachment if we have results
-  if (hasResults && suites.length > 0) {
+  if (hasResults && suites.length > 0 && testDetails && testDetails.trim().length > 0) {
+    // Truncate if too long (Slack text field limit is 8000 chars, but we'll use 7000 to be safe)
+    const maxTextLength = 7000;
+    let finalTestDetails = testDetails;
+    if (testDetails.length > maxTextLength) {
+      finalTestDetails = testDetails.substring(0, maxTextLength) + '\n\n_... (mensaje truncado debido a longitud)_';
+    }
+    
     attachments.push({
       color: color,
       title: '📋 Detailed Test Results',
-      text: `\`\`\`${testDetails}\`\`\``,
+      text: finalTestDetails,
       mrkdwn_in: ['text']
     });
   }
