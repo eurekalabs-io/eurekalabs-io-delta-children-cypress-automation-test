@@ -196,8 +196,14 @@ function getTestSuitesSummary(results) {
     const failed = suiteTests.filter(t => t.state === 'failed').length;
     const pending = suiteTests.filter(t => t.state === 'pending').length;
     
+    // Extract file name from suite
+    const filePath = suite.file || '';
+    const fileName = filePath ? path.basename(filePath) : '';
+    
     return {
       title: suite.fullTitle || suite.title || 'Unknown Suite',
+      file: fileName,
+      filePath: filePath,
       total: suiteTests.length,
       passed,
       failed,
@@ -209,6 +215,118 @@ function getTestSuitesSummary(results) {
 }
 
 /**
+ * Extract accessibility violations from test logs, code, and messages
+ */
+function extractAccessibilityViolations(test) {
+  const violations = [];
+  
+  if (!test) {
+    return violations;
+  }
+  
+  // Function to extract violations from text
+  const extractFromText = (text) => {
+    if (!text || typeof text !== 'string') return null;
+    
+    // Look for accessibility results patterns (multiple formats)
+    const patterns = [
+      /ACCESSIBILITY RESULTS FOR TEST[^\n]*\n([\s\S]*?)(?=\n\n|\n\*|$)/i,
+      /CRITICAL VIOLATIONS:\s*(\d+)[\s\S]*?SERIOUS VIOLATIONS:\s*(\d+)/i,
+      /(?:CRITICAL|SERIOUS|MODERATE|MINOR)\s+VIOLATIONS?:\s*(\d+)/gi
+    ];
+    
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        // Extract violation counts
+        const criticalMatch = text.match(/CRITICAL VIOLATIONS:\s*(\d+)/i);
+        const seriousMatch = text.match(/SERIOUS VIOLATIONS:\s*(\d+)/i);
+        const moderateMatch = text.match(/MODERATE VIOLATIONS:\s*(\d+)/i);
+        const minorMatch = text.match(/MINOR VIOLATIONS:\s*(\d+)/i);
+        
+        const critical = criticalMatch ? parseInt(criticalMatch[1]) : 0;
+        const serious = seriousMatch ? parseInt(seriousMatch[1]) : 0;
+        const moderate = moderateMatch ? parseInt(moderateMatch[1]) : 0;
+        const minor = minorMatch ? parseInt(minorMatch[1]) : 0;
+        
+        if (critical > 0 || serious > 0 || moderate > 0 || minor > 0) {
+          return { critical, serious, moderate, minor };
+        }
+      }
+    }
+    
+    return null;
+  };
+  
+  // Check test code blocks
+  if (test.code && Array.isArray(test.code)) {
+    test.code.forEach(codeBlock => {
+      if (codeBlock) {
+        const text = typeof codeBlock === 'string' ? codeBlock : JSON.stringify(codeBlock);
+        const violationData = extractFromText(text);
+        if (violationData) {
+          violations.push({
+            testName: test.title || 'Unknown Test',
+            ...violationData
+          });
+        }
+      }
+    });
+  }
+  
+  // Check error messages
+  if (test.err) {
+    const errorText = test.err.message || test.err.estack || JSON.stringify(test.err);
+    const violationData = extractFromText(errorText);
+    if (violationData) {
+      const exists = violations.some(v => v.testName === (test.title || 'Unknown Test'));
+      if (!exists) {
+        violations.push({
+          testName: test.title || 'Unknown Test',
+          ...violationData
+        });
+      }
+    }
+  }
+  
+  // Check test context (for Cypress logs)
+  if (test.context && Array.isArray(test.context)) {
+    test.context.forEach(ctx => {
+      if (ctx && ctx.value) {
+        const text = typeof ctx.value === 'string' ? ctx.value : JSON.stringify(ctx.value);
+        const violationData = extractFromText(text);
+        if (violationData) {
+          const exists = violations.some(v => v.testName === (test.title || 'Unknown Test'));
+          if (!exists) {
+            violations.push({
+              testName: test.title || 'Unknown Test',
+              ...violationData
+            });
+          }
+        }
+      }
+    });
+  }
+  
+  return violations;
+}
+
+/**
+ * Get list of test files executed
+ */
+function getTestFiles(suites) {
+  const files = new Set();
+  
+  suites.forEach(suite => {
+    if (suite.file) {
+      files.add(suite.file);
+    }
+  });
+  
+  return Array.from(files).map(file => path.basename(file));
+}
+
+/**
  * Format test details for Slack
  * Shows all tests and subtests with their status
  */
@@ -217,10 +335,20 @@ function formatTestDetails(suites) {
     return 'No test details available.';
   }
 
-  const MAX_LENGTH = 3500; // Slack limit is 4000, leave some buffer
+  const MAX_LENGTH = 6000; // Increased limit for more details
   let details = '';
   let totalTestsShown = 0;
   let totalTestsSkipped = 0;
+  
+  // Add test files executed section
+  const testFiles = getTestFiles(suites);
+  if (testFiles.length > 0) {
+    details += '*📁 Test Files Executed:*\n';
+    testFiles.forEach(file => {
+      details += `  • ${file}\n`;
+    });
+    details += '\n';
+  }
   
   suites.forEach((suite, index) => {
     const statusEmoji = suite.failed > 0 ? '❌' : suite.passed > 0 ? '✅' : '⏸️';
@@ -251,6 +379,24 @@ function formatTestDetails(suites) {
         
         details += testLine;
         totalTestsShown++;
+        
+        // Extract and show accessibility violations if present
+        const accessibilityViolations = extractAccessibilityViolations(test);
+        if (accessibilityViolations.length > 0) {
+          accessibilityViolations.forEach(violation => {
+            const violationLine = `  📊 *Accessibility Results:*\n`;
+            const criticalLine = `    🔴 CRITICAL: ${violation.critical}\n`;
+            const seriousLine = `    🟠 SERIOUS: ${violation.serious}\n`;
+            const moderateLine = `    🟡 MODERATE: ${violation.moderate}\n`;
+            const minorLine = `    🟢 MINOR: ${violation.minor}\n`;
+            
+            const violationText = violationLine + criticalLine + seriousLine + moderateLine + minorLine;
+            
+            if (details.length + violationText.length <= MAX_LENGTH) {
+              details += violationText;
+            }
+          });
+        }
         
         // Show error message for failed tests
         if (test.state === 'failed' && test.err) {
@@ -355,6 +501,7 @@ function createSlackMessage(summary, results) {
   // Get test suites summary
   const suites = getTestSuitesSummary(results);
   const testDetails = formatTestDetails(suites);
+  const testFiles = getTestFiles(suites);
   
   // Debug logging
   console.log(`📋 Found ${suites.length} test suite(s)`);
@@ -362,6 +509,7 @@ function createSlackMessage(summary, results) {
     console.log(`   Suite ${idx + 1}: ${suite.title} - ${suite.total} tests (${suite.passed} passed, ${suite.failed} failed)`);
   });
   console.log(`📝 Test details length: ${testDetails.length} characters`);
+  console.log(`📁 Test files executed: ${testFiles.join(', ')}`);
 
   // Create main attachment with summary
   const fields = [
@@ -371,6 +519,18 @@ function createSlackMessage(summary, results) {
       short: true
     }
   ];
+  
+  // Add test files if available
+  if (testFiles.length > 0) {
+    const filesValue = testFiles.length <= 3 
+      ? testFiles.join(', ') 
+      : `${testFiles.slice(0, 3).join(', ')}... (+${testFiles.length - 3} more)`;
+    fields.push({
+      title: 'Test Files',
+      value: `*${filesValue}*`,
+      short: false
+    });
+  }
 
   // Only add test details if we have results
   if (hasResults) {
