@@ -12,7 +12,16 @@ import ProductsList from "../page-objects/pages/ProductsList.js";
 const sets = require("../fixtures/NurserySets.json");
 
 describe('Nursery Sets Collection Suite', () => {
+  // Suite-level setup
+  before(() => {
+    cy.log('Starting Nursery Sets Collection Suite');
+  });
+
+  after(() => {
+    cy.log('Nursery Sets Collection Suite completed');
+  });
   beforeEach(() => {
+    cy.log('Setting up test environment for Nursery Sets Collection');
     cy.visit("https://www.deltachildren.com/pages/bundles");
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
@@ -61,10 +70,17 @@ describe('Nursery Sets Collection Suite', () => {
     });
   });
 
+  afterEach(() => {
+    cy.log('Test completed, cleaning up...');
+  });
+
   // Create a separate test for each set in the array
   // This ensures each iteration is registered as a separate test in Cypress reports
   sets.forEach((data, index) => {
-    it(`should select nursery set for ${data.category} - ${data.subcategory}`, () => {
+    it(`should select nursery set for ${data.category} - ${data.subcategory}`, function() {
+      // Test context for better reporting
+      this.test.title = `Nursery Sets Collection Suite - should select nursery set for ${data.category} - ${data.subcategory}`;
+      cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
       // Verify URL only if we're not already in the cart
       // After adding products, the URL may change to /cart
       cy.url().then((currentUrl) => {

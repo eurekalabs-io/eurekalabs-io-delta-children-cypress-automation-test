@@ -12,7 +12,16 @@ import ProductsList from "../page-objects/pages/ProductsList.js";
 const sets = require("../fixtures/KidsSets.json");
 
 describe('Kids Sets Collection Suite', () => {
+  // Suite-level setup
+  before(() => {
+    cy.log('Starting Kids Sets Collection Suite');
+  });
+
+  after(() => {
+    cy.log('Kids Sets Collection Suite completed');
+  });
   beforeEach(() => {
+    cy.log('Setting up test environment for Kids Sets Collection');
     cy.visit("https://www.deltachildren.com/pages/kids-bedroom-sets");
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
@@ -66,10 +75,17 @@ describe('Kids Sets Collection Suite', () => {
     });
   });
 
+  afterEach(() => {
+    cy.log('Test completed, cleaning up...');
+  });
+
   // Create a separate test for each set in the array
   // This ensures each iteration is registered as a separate test in Cypress reports
   sets.forEach((data, index) => {
-    it(`should select kids set for ${data.category} - ${data.subcategory}`, () => {
+    it(`should select kids set for ${data.category} - ${data.subcategory}`, function() {
+      // Test context for better reporting
+      this.test.title = `Kids Sets Collection Suite - should select kids set for ${data.category} - ${data.subcategory}`;
+      cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
       // Verify URL and handle different cases
       cy.url().then((currentUrl) => {
         // If we're already in the cart, continue

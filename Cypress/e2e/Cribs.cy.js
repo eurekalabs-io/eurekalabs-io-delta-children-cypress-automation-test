@@ -31,7 +31,16 @@ import ProductsListCribsExclusivelyTarget from "../page-objects/pages/ProductsLi
 const sets = require("../fixtures/Cribs.json");
 
 describe('Cribs Collection Suite', () => {
+  // Suite-level setup
+  before(() => {
+    cy.log('Starting Cribs Collection Suite');
+  });
+
+  after(() => {
+    cy.log('Cribs Collection Suite completed');
+  });
   beforeEach(() => {
+    cy.log('Setting up test environment for Cribs Collection');
     cy.visit("https://www.deltachildren.com/collections/cribs");
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
@@ -45,7 +54,14 @@ describe('Cribs Collection Suite', () => {
     });
   });
 
-  it("should select second variant on PDP for multiple random crib products", () => {
+  afterEach(() => {
+    cy.log('Test completed, cleaning up...');
+  });
+
+  it("should select second variant on PDP for multiple random crib products", function() {
+    // Test context for better reporting
+    this.test.title = "Cribs Collection Suite - should select second variant on PDP for multiple random crib products";
+    cy.log("Executing test: Select second variant on PDP for multiple random crib products");
     // STEP 1: Find all products on the cribs page
     cy.get('a.product__title.product__item-title').then(($elements) => {
       cy.log(`STEP 1: Found ${$elements.length} products on the cribs page`);
@@ -97,7 +113,10 @@ describe('Cribs Collection Suite', () => {
   });
 
 
-  it("should select second variant on collection grid for items with multiple swatches", () => {
+  it("should select second variant on collection grid for items with multiple swatches", function() {
+    // Test context for better reporting
+    this.test.title = "Cribs Collection Suite - should select second variant on collection grid for items with multiple swatches";
+    cy.log("Executing test: Select second variant on collection grid for items with multiple swatches");
     // STEP 1: Find all products on the cribs page
     cy.get('a.product__title.product__item-title').then(($elements) => {
       cy.log(`STEP 1: Found ${$elements.length} products on the cribs page`);
