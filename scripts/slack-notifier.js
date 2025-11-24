@@ -184,34 +184,84 @@ function formatDuration(ms) {
 
 /**
  * Get test suites summary
+ * Handles nested suites structure in mochawesome reports
  */
 function getTestSuitesSummary(results) {
   if (!results || !results.results || !Array.isArray(results.results)) {
+    console.log('⚠️ No results found or results.results is not an array');
     return [];
   }
 
-  return results.results.map(suite => {
+  const suites = [];
+  
+  // Function to recursively extract tests from suites
+  const extractTestsFromSuite = (suite, parentTitle = '') => {
+    const suiteTitle = suite.fullTitle || suite.title || 'Unknown Suite';
+    const fullTitle = parentTitle ? `${parentTitle} > ${suiteTitle}` : suiteTitle;
+    
+    // Get tests from this suite
     const suiteTests = suite.tests || [];
-    const passed = suiteTests.filter(t => t.state === 'passed').length;
-    const failed = suiteTests.filter(t => t.state === 'failed').length;
-    const pending = suiteTests.filter(t => t.state === 'pending').length;
     
-    // Extract file name from suite
-    const filePath = suite.file || '';
-    const fileName = filePath ? path.basename(filePath) : '';
+    // Get nested suites (suites can contain other suites)
+    const nestedSuites = suite.suites || [];
     
-    return {
-      title: suite.fullTitle || suite.title || 'Unknown Suite',
-      file: fileName,
-      filePath: filePath,
-      total: suiteTests.length,
-      passed,
-      failed,
-      pending,
-      duration: suite.duration || 0,
-      tests: suiteTests
-    };
+    // If this suite has tests, add it
+    if (suiteTests.length > 0) {
+      const passed = suiteTests.filter(t => t.state === 'passed').length;
+      const failed = suiteTests.filter(t => t.state === 'failed').length;
+      const pending = suiteTests.filter(t => t.state === 'pending').length;
+      
+      // Extract file name from suite
+      const filePath = suite.file || '';
+      const fileName = filePath ? path.basename(filePath) : '';
+      
+      suites.push({
+        title: fullTitle,
+        file: fileName,
+        filePath: filePath,
+        total: suiteTests.length,
+        passed,
+        failed,
+        pending,
+        duration: suite.duration || 0,
+        tests: suiteTests
+      });
+    }
+    
+    // Process nested suites recursively
+    nestedSuites.forEach(nestedSuite => {
+      extractTestsFromSuite(nestedSuite, fullTitle);
+    });
+  };
+  
+  // Process all top-level suites
+  results.results.forEach(suite => {
+    extractTestsFromSuite(suite);
   });
+  
+  // Filter out suites with no tests (but keep if they have nested suites that might have tests)
+  // Actually, we already filter in extractTestsFromSuite, so suites should only have tests
+  
+  console.log(`📊 Extracted ${suites.length} suite(s) with tests`);
+  if (suites.length === 0) {
+    console.warn('⚠️ No suites with tests found! Checking structure...');
+    results.results.forEach((suite, idx) => {
+      console.log(`   Result ${idx + 1}:`);
+      console.log(`     Title: ${suite.title || suite.fullTitle || 'N/A'}`);
+      console.log(`     File: ${suite.file || 'N/A'}`);
+      console.log(`     Tests: ${suite.tests ? suite.tests.length : 0}`);
+      console.log(`     Suites: ${suite.suites ? suite.suites.length : 0}`);
+      if (suite.tests && suite.tests.length > 0) {
+        console.log(`     First test: ${suite.tests[0].title || suite.tests[0].fullTitle || 'N/A'}`);
+      }
+    });
+  } else {
+    suites.forEach((suite, idx) => {
+      console.log(`   Suite ${idx + 1}: "${suite.title}" - ${suite.total} tests (file: ${suite.file || 'N/A'})`);
+    });
+  }
+  
+  return suites;
 }
 
 /**
@@ -351,6 +401,12 @@ function formatTestDetails(suites) {
   }
   
   suites.forEach((suite, index) => {
+    // Skip suites with no tests
+    if (!suite.tests || suite.tests.length === 0) {
+      console.log(`⚠️ Skipping suite "${suite.title}" - no tests found`);
+      return;
+    }
+    
     const statusEmoji = suite.failed > 0 ? '❌' : suite.passed > 0 ? '✅' : '⏸️';
     const suiteHeader = `\n*${statusEmoji} ${suite.title}*\n`;
     const suiteSummary = `Tests: ${suite.total} | ✅ ${suite.passed} | ❌ ${suite.failed} | ⏸️ ${suite.pending} | ⏱️ ${formatDuration(suite.duration)}\n`;
@@ -457,9 +513,6 @@ function formatTestDetails(suites) {
           });
         }
       });
-    } else {
-      // If no tests in suite, add a note
-      details += `  (No tests found in this suite)\n`;
     }
   });
   
@@ -695,6 +748,29 @@ async function main() {
   console.log('📊 Parsing Cypress test results...');
   
   const results = parseCypressResults();
+  
+  if (!results) {
+    console.error('❌ No results found! Check if report files exist.');
+    return;
+  }
+  
+  // Debug: Log structure of results
+  console.log('📋 Results structure:');
+  console.log(`   Has stats: ${!!results.stats}`);
+  console.log(`   Has results array: ${!!(results.results && Array.isArray(results.results))}`);
+  console.log(`   Results array length: ${results.results ? results.results.length : 0}`);
+  
+  if (results.results && results.results.length > 0) {
+    console.log('📋 First result structure:');
+    const firstResult = results.results[0];
+    console.log(`   Has tests: ${!!(firstResult.tests && Array.isArray(firstResult.tests))}`);
+    console.log(`   Tests count: ${firstResult.tests ? firstResult.tests.length : 0}`);
+    console.log(`   Has suites: ${!!(firstResult.suites && Array.isArray(firstResult.suites))}`);
+    console.log(`   Suites count: ${firstResult.suites ? firstResult.suites.length : 0}`);
+    console.log(`   Title: ${firstResult.title || firstResult.fullTitle || 'N/A'}`);
+    console.log(`   File: ${firstResult.file || 'N/A'}`);
+  }
+  
   const summary = getTestSummary(results);
 
   console.log('📈 Test Summary:');
