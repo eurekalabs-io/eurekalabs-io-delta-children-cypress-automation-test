@@ -185,6 +185,7 @@ function formatDuration(ms) {
 /**
  * Get test suites summary
  * Handles nested suites structure in mochawesome reports
+ * Also handles cases where tests are directly in the file without describe() blocks
  */
 function getTestSuitesSummary(results) {
   if (!results || !results.results || !Array.isArray(results.results)) {
@@ -195,9 +196,13 @@ function getTestSuitesSummary(results) {
   const suites = [];
   
   // Function to recursively extract tests from suites
-  const extractTestsFromSuite = (suite, parentTitle = '') => {
-    const suiteTitle = suite.fullTitle || suite.title || 'Unknown Suite';
+  const extractTestsFromSuite = (suite, parentTitle = '', parentFile = '') => {
+    const suiteTitle = suite.fullTitle || suite.title || '';
     const fullTitle = parentTitle ? `${parentTitle} > ${suiteTitle}` : suiteTitle;
+    
+    // Get file path (prefer current suite's file, fallback to parent's file)
+    const filePath = suite.file || parentFile || '';
+    const fileName = filePath ? path.basename(filePath) : '';
     
     // Get tests from this suite
     const suiteTests = suite.tests || [];
@@ -211,12 +216,11 @@ function getTestSuitesSummary(results) {
       const failed = suiteTests.filter(t => t.state === 'failed').length;
       const pending = suiteTests.filter(t => t.state === 'pending').length;
       
-      // Extract file name from suite
-      const filePath = suite.file || '';
-      const fileName = filePath ? path.basename(filePath) : '';
+      // Use file name as suite title if no title exists (for tests without describe blocks)
+      const displayTitle = fullTitle || fileName || 'Unknown Suite';
       
       suites.push({
-        title: fullTitle,
+        title: displayTitle,
         file: fileName,
         filePath: filePath,
         total: suiteTests.length,
@@ -230,7 +234,7 @@ function getTestSuitesSummary(results) {
     
     // Process nested suites recursively
     nestedSuites.forEach(nestedSuite => {
-      extractTestsFromSuite(nestedSuite, fullTitle);
+      extractTestsFromSuite(nestedSuite, fullTitle, filePath);
     });
   };
   
@@ -239,8 +243,46 @@ function getTestSuitesSummary(results) {
     extractTestsFromSuite(suite);
   });
   
-  // Filter out suites with no tests (but keep if they have nested suites that might have tests)
-  // Actually, we already filter in extractTestsFromSuite, so suites should only have tests
+  // Also check if there are tests directly in results.results without suite wrapper
+  // This can happen when tests don't have a describe() block
+  results.results.forEach((result, idx) => {
+    // If this result has tests but no title (or empty title), it might be a file-level suite
+    const hasTests = result.tests && Array.isArray(result.tests) && result.tests.length > 0;
+    const hasNoTitle = !result.title && !result.fullTitle;
+    const filePath = result.file || '';
+    const fileName = filePath ? path.basename(filePath) : '';
+    
+    if (hasTests && (hasNoTitle || !result.suites || result.suites.length === 0)) {
+      // Check if we already added this suite
+      const alreadyAdded = suites.some(s => 
+        s.file === fileName && s.tests.length === result.tests.length &&
+        s.tests.every((t, i) => t.title === result.tests[i].title)
+      );
+      
+      if (!alreadyAdded) {
+        const passed = result.tests.filter(t => t.state === 'passed').length;
+        const failed = result.tests.filter(t => t.state === 'failed').length;
+        const pending = result.tests.filter(t => t.state === 'pending').length;
+        
+        // Use file name as suite title for tests without describe blocks
+        const suiteTitle = result.fullTitle || result.title || fileName || `Test File ${idx + 1}`;
+        
+        suites.push({
+          title: suiteTitle,
+          file: fileName,
+          filePath: filePath,
+          total: result.tests.length,
+          passed,
+          failed,
+          pending,
+          duration: result.duration || 0,
+          tests: result.tests
+        });
+        
+        console.log(`📋 Added file-level suite: "${suiteTitle}" from ${fileName} with ${result.tests.length} tests`);
+      }
+    }
+  });
   
   console.log(`📊 Extracted ${suites.length} suite(s) with tests`);
   if (suites.length === 0) {
