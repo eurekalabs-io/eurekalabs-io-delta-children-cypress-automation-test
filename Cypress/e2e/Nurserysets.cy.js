@@ -11,7 +11,7 @@ import ProductsList from "../page-objects/pages/ProductsList.js";
 // Data
 const sets = require("../fixtures/NurserySets.json");
 
-describe('Nursery Sets Collection Tests', () => {
+describe('Nursery Sets Collection Suite', () => {
   beforeEach(() => {
     cy.visit("https://www.deltachildren.com/pages/bundles");
     // Accept cookie banner if it appears

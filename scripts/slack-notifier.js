@@ -441,11 +441,18 @@ function extractAccessibilityViolations(test) {
  */
 function extractFilesFromTitles(suites, results = null) {
   const filePatterns = {
+    'Cribs Collection Suite': 'Cribs.cy.js',
+    'Cribs Collection Tests': 'Cribs.cy.js',
     'Cribs': 'Cribs.cy.js',
+    'Kids Sets Collection Suite': 'Kidssets.cy.js',
+    'Kids Sets Collection Tests': 'Kidssets.cy.js',
     'Kids Sets': 'Kidssets.cy.js',
     'Kids Set': 'Kidssets.cy.js',
+    'Nursery Sets Collection Suite': 'Nurserysets.cy.js',
+    'Nursery Sets Collection Tests': 'Nurserysets.cy.js',
     'Nursery Sets': 'Nurserysets.cy.js',
-    'Nursery Set': 'Nurserysets.cy.js'
+    'Nursery Set': 'Nurserysets.cy.js',
+    'Accessibility Suite': 'accessibilityTest.cy.js'
   };
   
   const foundFiles = new Set();

@@ -8,12 +8,10 @@ import CartPage from "../page-objects/pages/CartPage.js";
 import ProductDetailsPage from "../page-objects/pages/ProductDetailsPage.js";
 import ProductsList from "../page-objects/pages/ProductsList.js";
 
-
-
 // Data
 const sets = require("../fixtures/KidsSets.json");
 
-describe('Kids Sets Collection Tests', () => {
+describe('Kids Sets Collection Suite', () => {
   beforeEach(() => {
     cy.visit("https://www.deltachildren.com/pages/kids-bedroom-sets");
     // Accept cookie banner if it appears

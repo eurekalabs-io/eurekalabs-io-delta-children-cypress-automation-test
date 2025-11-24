@@ -30,7 +30,7 @@ import ProductsListCribsExclusivelyTarget from "../page-objects/pages/ProductsLi
 // Data
 const sets = require("../fixtures/Cribs.json");
 
-describe('Cribs Collection Tests', () => {
+describe('Cribs Collection Suite', () => {
   beforeEach(() => {
     cy.visit("https://www.deltachildren.com/collections/cribs");
     // Accept cookie banner if it appears
