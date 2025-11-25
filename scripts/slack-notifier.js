@@ -774,7 +774,9 @@ function formatTestDetails(suites, results = null) {
     if (suite.tests && suite.tests.length > 0) {
       suite.tests.forEach(test => {
         const testStatusEmoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
-        const testTitle = test.title || test.fullTitle || 'Unnamed Test';
+        // Prioritize fullTitle over title to show complete test path including suite name
+        // fullTitle typically includes the suite name, while title might only have the test name
+        const testTitle = test.fullTitle || test.title || 'Unnamed Test';
         const testDuration = test.duration ? ` (${formatDuration(test.duration)})` : '';
         const testLine = `${testStatusEmoji} *${testTitle}*${testDuration}\n`;
         
@@ -820,7 +822,8 @@ function formatTestDetails(suites, results = null) {
         if (test.tests && Array.isArray(test.tests) && test.tests.length > 0) {
           test.tests.forEach(subtest => {
             const subtestStatusEmoji = subtest.state === 'passed' ? '✅' : subtest.state === 'failed' ? '❌' : '⏸️';
-            const subtestTitle = subtest.title || subtest.fullTitle || 'Unnamed Subtest';
+            // Prioritize fullTitle over title to show complete test path
+            const subtestTitle = subtest.fullTitle || subtest.title || 'Unnamed Subtest';
             const subtestDuration = subtest.duration ? ` (${formatDuration(subtest.duration)})` : '';
             const subtestLine = `  ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
             
