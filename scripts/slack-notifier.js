@@ -786,9 +786,18 @@ function formatTestDetails(suites, results = null) {
   
   suites.forEach((suite, index) => {
     // Skip suites with no tests
-    if (!suite.tests || suite.tests.length === 0) {
-      console.log(`⚠️ Skipping suite "${suite.title}" - no tests found`);
+    // Check both suite.tests and suite.total to ensure we don't skip suites incorrectly
+    const hasTests = (suite.tests && suite.tests.length > 0) || (suite.total && suite.total > 0);
+    if (!hasTests) {
+      console.log(`⚠️ Skipping suite "${suite.title}" - no tests found (tests: ${suite.tests ? suite.tests.length : 0}, total: ${suite.total || 0})`);
       return;
+    }
+    
+    // Ensure suite.tests exists, if not but suite.total > 0, log a warning
+    if (!suite.tests || suite.tests.length === 0) {
+      if (suite.total > 0) {
+        console.log(`⚠️ Suite "${suite.title}" has total=${suite.total} but tests array is empty - this shouldn't happen`);
+      }
     }
     
     const statusEmoji = suite.failed > 0 ? '❌' : suite.passed > 0 ? '✅' : '⏸️';
@@ -804,6 +813,7 @@ function formatTestDetails(suites, results = null) {
     details += suiteHeader + suiteSummary;
     
     // Show all tests with their status
+    // Use suite.tests if available, otherwise skip (shouldn't happen if suite.total > 0)
     if (suite.tests && suite.tests.length > 0) {
       suite.tests.forEach(test => {
         const testStatusEmoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
