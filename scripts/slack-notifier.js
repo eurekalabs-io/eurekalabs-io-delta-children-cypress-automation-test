@@ -195,6 +195,17 @@ function getTestSuitesSummary(results) {
 
   const suites = [];
   
+  // Helper function to collect all tests from a suite (including nested suites)
+  const collectAllTests = (suiteItem) => {
+    let allTests = [...(suiteItem.tests || [])];
+    if (suiteItem.suites && Array.isArray(suiteItem.suites)) {
+      suiteItem.suites.forEach(nested => {
+        allTests = allTests.concat(collectAllTests(nested));
+      });
+    }
+    return allTests;
+  };
+  
   // Function to recursively extract tests from suites
   const extractTestsFromSuite = (suite, parentTitle = '', parentFile = '') => {
     const suiteTitle = suite.fullTitle || suite.title || '';
@@ -227,33 +238,59 @@ function getTestSuitesSummary(results) {
     // Get nested suites (suites can contain other suites)
     const nestedSuites = suite.suites || [];
     
-    // If this suite has tests, add it
-    if (suiteTests.length > 0) {
-      const passed = suiteTests.filter(t => t.state === 'passed').length;
-      const failed = suiteTests.filter(t => t.state === 'failed').length;
-      const pending = suiteTests.filter(t => t.state === 'pending').length;
+    // Get all tests including from nested suites
+    const allTests = collectAllTests(suite);
+    
+    // Determine if this is a top-level suite (no parent title)
+    const isTopLevel = !parentTitle;
+    
+    // If this suite has tests (directly or in nested suites), add it
+    // Always add top-level suites that have tests anywhere
+    // For nested suites, only add if they have direct tests (to avoid duplicates)
+    if (allTests.length > 0 && (isTopLevel || suiteTests.length > 0)) {
+      const passed = allTests.filter(t => t.state === 'passed').length;
+      const failed = allTests.filter(t => t.state === 'failed').length;
+      const pending = allTests.filter(t => t.state === 'pending').length;
       
       // Use file name as suite title if no title exists (for tests without describe blocks)
-      const displayTitle = fullTitle || fileName || 'Unknown Suite';
+      // For top-level suites, use the suite title directly (not the full title with parent)
+      const displayTitle = isTopLevel 
+        ? (suiteTitle || fileName || 'Unknown Suite')
+        : (fullTitle || fileName || 'Unknown Suite');
       
-      // Log file information for debugging
-      if (filePath || fileName) {
-        console.log(`   ✅ Adding suite "${displayTitle}" with file: ${fileName || filePath}`);
-      } else {
-        console.log(`   ⚠️ Adding suite "${displayTitle}" WITHOUT file information`);
-      }
-      
-      suites.push({
-        title: displayTitle,
-        file: fileName,
-        filePath: filePath,
-        total: suiteTests.length,
-        passed,
-        failed,
-        pending,
-        duration: suite.duration || 0,
-        tests: suiteTests
+      // Check if we already added this suite (avoid duplicates)
+      // Use a more flexible check for top-level suites
+      const alreadyAdded = suites.some(s => {
+        if (isTopLevel) {
+          // For top-level suites, check by file name or title match
+          return (s.file === fileName && fileName) || 
+                 (s.title === displayTitle && displayTitle !== 'Unknown Suite');
+        } else {
+          // For nested suites, check by exact title and file match
+          return s.title === displayTitle && s.file === fileName;
+        }
       });
+      
+      if (!alreadyAdded) {
+        // Log file information for debugging
+        if (filePath || fileName) {
+          console.log(`   ✅ Adding suite "${displayTitle}" with file: ${fileName || filePath} (${allTests.length} tests${isTopLevel ? ' - top-level' : ''})`);
+        } else {
+          console.log(`   ⚠️ Adding suite "${displayTitle}" WITHOUT file information (${allTests.length} tests${isTopLevel ? ' - top-level' : ''})`);
+        }
+        
+        suites.push({
+          title: displayTitle,
+          file: fileName,
+          filePath: filePath,
+          total: allTests.length,
+          passed,
+          failed,
+          pending,
+          duration: suite.duration || 0,
+          tests: allTests
+        });
+      }
     }
     
     // Process nested suites recursively, passing the file path
@@ -277,41 +314,51 @@ function getTestSuitesSummary(results) {
   
   // Also check if there are tests directly in results.results without suite wrapper
   // This can happen when tests don't have a describe() block
+  // Also check for top-level results that might have been missed
   results.results.forEach((result, idx) => {
-    // If this result has tests but no title (or empty title), it might be a file-level suite
-    const hasTests = result.tests && Array.isArray(result.tests) && result.tests.length > 0;
-    const hasNoTitle = !result.title && !result.fullTitle;
     const filePath = result.file || '';
     const fileName = filePath ? path.basename(filePath) : '';
+    const suiteTitle = result.fullTitle || result.title || '';
     
-    if (hasTests && (hasNoTitle || !result.suites || result.suites.length === 0)) {
+    // Collect all tests from this result (including nested suites)
+    const allTestsFromResult = collectAllTests(result);
+    
+    // If this result has tests but wasn't added yet, add it
+    if (allTestsFromResult.length > 0) {
       // Check if we already added this suite
-      const alreadyAdded = suites.some(s => 
-        s.file === fileName && s.tests.length === result.tests.length &&
-        s.tests.every((t, i) => t.title === result.tests[i].title)
-      );
+      const alreadyAdded = suites.some(s => {
+        // Check by file name (most reliable)
+        if (fileName && s.file === fileName) {
+          return true;
+        }
+        // Check by title match
+        if (suiteTitle && s.title === suiteTitle) {
+          return true;
+        }
+        return false;
+      });
       
       if (!alreadyAdded) {
-        const passed = result.tests.filter(t => t.state === 'passed').length;
-        const failed = result.tests.filter(t => t.state === 'failed').length;
-        const pending = result.tests.filter(t => t.state === 'pending').length;
+        const passed = allTestsFromResult.filter(t => t.state === 'passed').length;
+        const failed = allTestsFromResult.filter(t => t.state === 'failed').length;
+        const pending = allTestsFromResult.filter(t => t.state === 'pending').length;
         
-        // Use file name as suite title for tests without describe blocks
-        const suiteTitle = result.fullTitle || result.title || fileName || `Test File ${idx + 1}`;
+        // Use suite title, file name, or fallback
+        const displayTitle = suiteTitle || fileName || `Test File ${idx + 1}`;
         
         suites.push({
-          title: suiteTitle,
+          title: displayTitle,
           file: fileName,
           filePath: filePath,
-          total: result.tests.length,
+          total: allTestsFromResult.length,
           passed,
           failed,
           pending,
           duration: result.duration || 0,
-          tests: result.tests
+          tests: allTestsFromResult
         });
         
-        console.log(`📋 Added file-level suite: "${suiteTitle}" from ${fileName} with ${result.tests.length} tests`);
+        console.log(`📋 Added result-level suite: "${displayTitle}" from ${fileName || 'unknown file'} with ${allTestsFromResult.length} tests`);
       }
     }
   });
