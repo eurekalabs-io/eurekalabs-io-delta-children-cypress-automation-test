@@ -247,6 +247,7 @@ function getTestSuitesSummary(results) {
     // If this suite has tests (directly or in nested suites), add it
     // Always add top-level suites that have tests anywhere
     // For nested suites, only add if they have direct tests (to avoid duplicates)
+    // IMPORTANT: For top-level suites, always add if they have any tests (direct or nested)
     if (allTests.length > 0 && (isTopLevel || suiteTests.length > 0)) {
       const passed = allTests.filter(t => t.state === 'passed').length;
       const failed = allTests.filter(t => t.state === 'failed').length;
@@ -262,9 +263,19 @@ function getTestSuitesSummary(results) {
       // Use a more flexible check for top-level suites
       const alreadyAdded = suites.some(s => {
         if (isTopLevel) {
-          // For top-level suites, check by file name or title match
-          return (s.file === fileName && fileName) || 
-                 (s.title === displayTitle && displayTitle !== 'Unknown Suite');
+          // For top-level suites, check by file name (most reliable) or title match
+          // Be more lenient to catch all suites
+          if (fileName && s.file === fileName) {
+            return true;
+          }
+          if (displayTitle !== 'Unknown Suite' && s.title === displayTitle) {
+            return true;
+          }
+          // Also check if suite title matches (case-insensitive partial match)
+          if (suiteTitle && s.title && s.title.toLowerCase().includes(suiteTitle.toLowerCase())) {
+            return true;
+          }
+          return false;
         } else {
           // For nested suites, check by exact title and file match
           return s.title === displayTitle && s.file === fileName;
@@ -290,6 +301,8 @@ function getTestSuitesSummary(results) {
           duration: suite.duration || 0,
           tests: allTests
         });
+      } else {
+        console.log(`   ⏭️ Skipping suite "${displayTitle}" - already added`);
       }
     }
     
@@ -315,6 +328,7 @@ function getTestSuitesSummary(results) {
   // Also check if there are tests directly in results.results without suite wrapper
   // This can happen when tests don't have a describe() block
   // Also check for top-level results that might have been missed
+  // This is a critical fallback to ensure we capture ALL suites
   results.results.forEach((result, idx) => {
     const filePath = result.file || '';
     const fileName = filePath ? path.basename(filePath) : '';
@@ -325,15 +339,23 @@ function getTestSuitesSummary(results) {
     
     // If this result has tests but wasn't added yet, add it
     if (allTestsFromResult.length > 0) {
-      // Check if we already added this suite
+      // Check if we already added this suite (more lenient check)
       const alreadyAdded = suites.some(s => {
         // Check by file name (most reliable)
         if (fileName && s.file === fileName) {
           return true;
         }
-        // Check by title match
+        // Check by exact title match
         if (suiteTitle && s.title === suiteTitle) {
           return true;
+        }
+        // Check by partial title match (case-insensitive) for suites with similar names
+        if (suiteTitle && s.title) {
+          const suiteTitleLower = suiteTitle.toLowerCase();
+          const sTitleLower = s.title.toLowerCase();
+          if (suiteTitleLower.includes(sTitleLower) || sTitleLower.includes(suiteTitleLower)) {
+            return true;
+          }
         }
         return false;
       });
@@ -344,6 +366,7 @@ function getTestSuitesSummary(results) {
         const pending = allTestsFromResult.filter(t => t.state === 'pending').length;
         
         // Use suite title, file name, or fallback
+        // Prefer suiteTitle over fileName to get the actual suite name
         const displayTitle = suiteTitle || fileName || `Test File ${idx + 1}`;
         
         suites.push({
@@ -358,8 +381,12 @@ function getTestSuitesSummary(results) {
           tests: allTestsFromResult
         });
         
-        console.log(`📋 Added result-level suite: "${displayTitle}" from ${fileName || 'unknown file'} with ${allTestsFromResult.length} tests`);
+        console.log(`📋 Added result-level suite (fallback): "${displayTitle}" from ${fileName || 'unknown file'} with ${allTestsFromResult.length} tests`);
+      } else {
+        console.log(`📋 Skipping result ${idx + 1} "${suiteTitle || fileName}" - already added`);
       }
+    } else {
+      console.log(`📋 Result ${idx + 1} "${suiteTitle || fileName}" has no tests, skipping`);
     }
   });
   
@@ -728,8 +755,14 @@ function getTestFiles(suites, results = null) {
  */
 function formatTestDetails(suites, results = null) {
   if (!suites || suites.length === 0) {
+    console.log('⚠️ formatTestDetails: No suites provided or empty array');
     return 'No test details available.';
   }
+
+  console.log(`📋 formatTestDetails: Processing ${suites.length} suite(s)`);
+  suites.forEach((suite, idx) => {
+    console.log(`   Suite ${idx + 1}: "${suite.title}" - ${suite.total || 0} tests (file: ${suite.file || 'N/A'})`);
+  });
 
   const MAX_LENGTH = 6000; // Increased limit for more details
   let details = '';
