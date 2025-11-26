@@ -565,6 +565,51 @@ function getTestSuitesSummary(results) {
 }
 
 /**
+ * Try to read accessibility violations from JSON files if available
+ */
+function readAccessibilityViolationsFromFiles(testName) {
+  const violations = [];
+  const accessibilityDir = path.join(__dirname, '..', 'Cypress', 'accessibility');
+  
+  if (!fs.existsSync(accessibilityDir)) {
+    return violations;
+  }
+  
+  try {
+    // Look for JSON files matching the test name pattern
+    const files = fs.readdirSync(accessibilityDir);
+    const matchingFiles = files.filter(file => 
+      file.includes('violations-') && 
+      file.endsWith('.json') &&
+      (testName ? file.includes(testName.replace(/[^a-zA-Z0-9]/g, '-')) : true)
+    );
+    
+    // Sort by modification time (newest first)
+    matchingFiles.sort((a, b) => {
+      const statA = fs.statSync(path.join(accessibilityDir, a));
+      const statB = fs.statSync(path.join(accessibilityDir, b));
+      return statB.mtimeMs - statA.mtimeMs;
+    });
+    
+    // Read the most recent matching file
+    if (matchingFiles.length > 0) {
+      const filePath = path.join(accessibilityDir, matchingFiles[0]);
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const violationData = JSON.parse(fileContent);
+      
+      if (violationData && violationData.violations) {
+        console.log(`   ✅ Found accessibility violations file: ${matchingFiles[0]}`);
+        return [violationData];
+      }
+    }
+  } catch (error) {
+    console.log(`   ⚠️ Error reading accessibility files: ${error.message}`);
+  }
+  
+  return violations;
+}
+
+/**
  * Extract accessibility violations from test logs, code, and messages
  * Returns both summary counts and detailed violation information
  */
