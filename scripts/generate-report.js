@@ -78,6 +78,11 @@ async function generateReport() {
       reportDir: REPORTS_DIR
     });
     
+    // Save merged JSON for slack-notifier.js to use
+    const mergedJsonPath = path.join(OUTPUT_DIR, 'mochawesome-merged.json');
+    fs.writeFileSync(mergedJsonPath, JSON.stringify(mergedResults, null, 2), 'utf8');
+    console.log(`💾 Saved merged JSON: ${mergedJsonPath}`);
+    
     // Generate HTML report
     console.log('📄 Generating HTML report...');
     const htmlReport = await generate(mergedResults, {
