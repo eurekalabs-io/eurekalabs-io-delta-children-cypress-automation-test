@@ -566,6 +566,7 @@ function getTestSuitesSummary(results) {
 
 /**
  * Extract accessibility violations from test logs, code, and messages
+ * Returns both summary counts and detailed violation information
  */
 function extractAccessibilityViolations(test) {
   const violations = [];
@@ -574,52 +575,113 @@ function extractAccessibilityViolations(test) {
     return violations;
   }
   
-  // Function to extract violations from text
+  // Function to extract violations from text (both counts and details)
   const extractFromText = (text) => {
     if (!text || typeof text !== 'string') return null;
     
-    // Look for accessibility results patterns (multiple formats)
-    const patterns = [
-      /ACCESSIBILITY RESULTS FOR TEST[^\n]*\n([\s\S]*?)(?=\n\n|\n\*|$)/i,
-      /CRITICAL VIOLATIONS:\s*(\d+)[\s\S]*?SERIOUS VIOLATIONS:\s*(\d+)/i,
-      /(?:CRITICAL|SERIOUS|MODERATE|MINOR)\s+VIOLATIONS?:\s*(\d+)/gi
+    const result = {
+      testName: test.title || test.fullTitle || 'Unknown Test',
+      critical: 0,
+      serious: 0,
+      moderate: 0,
+      minor: 0,
+      details: []
+    };
+    
+    // Extract violation counts
+    const criticalMatch = text.match(/CRITICAL VIOLATIONS:\s*(\d+)/i);
+    const seriousMatch = text.match(/SERIOUS VIOLATIONS:\s*(\d+)/i);
+    const moderateMatch = text.match(/MODERATE VIOLATIONS:\s*(\d+)/i);
+    const minorMatch = text.match(/MINOR VIOLATIONS:\s*(\d+)/i);
+    
+    result.critical = criticalMatch ? parseInt(criticalMatch[1]) : 0;
+    result.serious = seriousMatch ? parseInt(seriousMatch[1]) : 0;
+    result.moderate = moderateMatch ? parseInt(moderateMatch[1]) : 0;
+    result.minor = minorMatch ? parseInt(minorMatch[1]) : 0;
+    
+    // Extract test name from accessibility results header
+    const testNameMatch = text.match(/ACCESSIBILITY RESULTS FOR TEST\s+"([^"]+)"/i);
+    if (testNameMatch) {
+      result.testName = testNameMatch[1];
+    }
+    
+    // Try to extract detailed violation table
+    // Look for table pattern with pipes (|) or Unicode box-drawing characters
+    // Pattern matches: | index | IMPACT | RULEID | TAGS | SELECTORS | DESCRIPTION | MOREINFO |
+    const tablePatterns = [
+      // Pattern with Unicode box-drawing characters (│)
+      /[│|]\s*\d+\s*[│|]\s*'([^']+)'\s*[│|]\s*'([^']+)'\s*[│|]\s*'([^']+)'\s*[│|]\s*'([^']+)'\s*[│|]\s*'([^']+)'\s*[│|]\s*'([^']+)'\s*[│|]/g,
+      // Pattern without quotes (in case quotes are escaped differently)
+      /[│|]\s*\d+\s*[│|]\s*([^\s│|]+)\s*[│|]\s*([^\s│|]+)\s*[│|]\s*([^\s│|]+)\s*[│|]\s*([^\s│|]+)\s*[│|]\s*([^\s│|]+)\s*[│|]\s*([^\s│|]+)\s*[│|]/g
     ];
     
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match) {
-        // Extract violation counts
-        const criticalMatch = text.match(/CRITICAL VIOLATIONS:\s*(\d+)/i);
-        const seriousMatch = text.match(/SERIOUS VIOLATIONS:\s*(\d+)/i);
-        const moderateMatch = text.match(/MODERATE VIOLATIONS:\s*(\d+)/i);
-        const minorMatch = text.match(/MINOR VIOLATIONS:\s*(\d+)/i);
+    for (const tablePattern of tablePatterns) {
+      let tableMatch;
+      while ((tableMatch = tablePattern.exec(text)) !== null) {
+        const [, impact, ruleId, tags, selectors, description, moreInfo] = tableMatch;
         
-        const critical = criticalMatch ? parseInt(criticalMatch[1]) : 0;
-        const serious = seriousMatch ? parseInt(seriousMatch[1]) : 0;
-        const moderate = moderateMatch ? parseInt(moderateMatch[1]) : 0;
-        const minor = minorMatch ? parseInt(minorMatch[1]) : 0;
+        // Clean up the extracted values (remove quotes and trim)
+        const cleanValue = (val) => {
+          if (!val) return '';
+          return val.replace(/^['"]|['"]$/g, '').trim();
+        };
         
-        if (critical > 0 || serious > 0 || moderate > 0 || minor > 0) {
-          return { critical, serious, moderate, minor };
+        const detail = {
+          impact: cleanValue(impact),
+          ruleId: cleanValue(ruleId),
+          tags: cleanValue(tags),
+          selectors: cleanValue(selectors),
+          description: cleanValue(description),
+          moreInfo: cleanValue(moreInfo)
+        };
+        
+        // Only add if we have meaningful data
+        if (detail.impact && detail.ruleId) {
+          result.details.push(detail);
         }
       }
+      
+      // If we found details with this pattern, break
+      if (result.details.length > 0) {
+        break;
+      }
+    }
+    
+    // Alternative: Try to extract from JSON-like structure if table parsing fails
+    if (result.details.length === 0) {
+      // Look for violation objects in logs
+      const violationPattern = /(?:violation|rule)[\s\S]*?id[:\s]+['"]?([^'"\s]+)['"]?[\s\S]*?impact[:\s]+['"]?([^'"\s]+)['"]?[\s\S]*?description[:\s]+['"]?([^'"]+)['"]?/gi;
+      let violationMatch;
+      
+      while ((violationMatch = violationPattern.exec(text)) !== null) {
+        result.details.push({
+          ruleId: violationMatch[1] || 'N/A',
+          impact: violationMatch[2] || 'N/A',
+          description: violationMatch[3] || 'N/A',
+          tags: '',
+          selectors: '',
+          moreInfo: ''
+        });
+      }
+    }
+    
+    // Only return if we found violations
+    if (result.critical > 0 || result.serious > 0 || result.moderate > 0 || result.minor > 0 || result.details.length > 0) {
+      return result;
     }
     
     return null;
   };
+  
+  // Collect all text sources
+  const textSources = [];
   
   // Check test code blocks
   if (test.code && Array.isArray(test.code)) {
     test.code.forEach(codeBlock => {
       if (codeBlock) {
         const text = typeof codeBlock === 'string' ? codeBlock : JSON.stringify(codeBlock);
-        const violationData = extractFromText(text);
-        if (violationData) {
-          violations.push({
-            testName: test.title || 'Unknown Test',
-            ...violationData
-          });
-        }
+        textSources.push(text);
       }
     });
   }
@@ -627,16 +689,7 @@ function extractAccessibilityViolations(test) {
   // Check error messages
   if (test.err) {
     const errorText = test.err.message || test.err.estack || JSON.stringify(test.err);
-    const violationData = extractFromText(errorText);
-    if (violationData) {
-      const exists = violations.some(v => v.testName === (test.title || 'Unknown Test'));
-      if (!exists) {
-        violations.push({
-          testName: test.title || 'Unknown Test',
-          ...violationData
-        });
-      }
-    }
+    textSources.push(errorText);
   }
   
   // Check test context (for Cypress logs)
@@ -644,18 +697,28 @@ function extractAccessibilityViolations(test) {
     test.context.forEach(ctx => {
       if (ctx && ctx.value) {
         const text = typeof ctx.value === 'string' ? ctx.value : JSON.stringify(ctx.value);
-        const violationData = extractFromText(text);
-        if (violationData) {
-          const exists = violations.some(v => v.testName === (test.title || 'Unknown Test'));
-          if (!exists) {
-            violations.push({
-              testName: test.title || 'Unknown Test',
-              ...violationData
-            });
-          }
-        }
+        textSources.push(text);
       }
     });
+  }
+  
+  // Check logs (if available)
+  if (test.logs && Array.isArray(test.logs)) {
+    test.logs.forEach(log => {
+      if (log && typeof log === 'string') {
+        textSources.push(log);
+      } else if (log && log.message) {
+        textSources.push(log.message);
+      }
+    });
+  }
+  
+  // Process all text sources
+  const combinedText = textSources.join('\n');
+  const violationData = extractFromText(combinedText);
+  
+  if (violationData) {
+    violations.push(violationData);
   }
   
   return violations;
@@ -988,16 +1051,64 @@ function formatTestDetails(suites, results = null) {
         const accessibilityViolations = extractAccessibilityViolations(test);
         if (accessibilityViolations.length > 0) {
           accessibilityViolations.forEach(violation => {
-            const violationLine = `  📊 *Accessibility Results:*\n`;
-            const criticalLine = `    🔴 CRITICAL: ${violation.critical}\n`;
-            const seriousLine = `    🟠 SERIOUS: ${violation.serious}\n`;
-            const moderateLine = `    🟡 MODERATE: ${violation.moderate}\n`;
-            const minorLine = `    🟢 MINOR: ${violation.minor}\n`;
+            let violationText = `  📊 *Accessibility Results for "${violation.testName}":*\n`;
             
-            const violationText = violationLine + criticalLine + seriousLine + moderateLine + minorLine;
+            // Add summary counts
+            if (violation.critical > 0 || violation.serious > 0 || violation.moderate > 0 || violation.minor > 0) {
+              violationText += `    *Summary:*\n`;
+              if (violation.critical > 0) violationText += `      🔴 CRITICAL: ${violation.critical}\n`;
+              if (violation.serious > 0) violationText += `      🟠 SERIOUS: ${violation.serious}\n`;
+              if (violation.moderate > 0) violationText += `      🟡 MODERATE: ${violation.moderate}\n`;
+              if (violation.minor > 0) violationText += `      🟢 MINOR: ${violation.minor}\n`;
+            }
             
+            // Add detailed violations if available
+            if (violation.details && violation.details.length > 0) {
+              violationText += `\n    *Detailed Violations:*\n`;
+              
+              violation.details.forEach((detail, idx) => {
+                const impactEmoji = detail.impact === 'CRITICAL' ? '🔴' : 
+                                   detail.impact === 'SERIOUS' ? '🟠' : 
+                                   detail.impact === 'MODERATE' ? '🟡' : '🟢';
+                
+                violationText += `\n    ${idx + 1}. ${impactEmoji} *${detail.impact}*\n`;
+                violationText += `       *Rule:* ${detail.ruleId || 'N/A'}\n`;
+                
+                if (detail.selectors) {
+                  // Truncate long selectors
+                  const selector = detail.selectors.length > 80 ? detail.selectors.substring(0, 80) + '...' : detail.selectors;
+                  violationText += `       *Selector:* \`${selector}\`\n`;
+                }
+                
+                if (detail.description) {
+                  // Truncate long descriptions
+                  const desc = detail.description.length > 150 ? detail.description.substring(0, 150) + '...' : detail.description;
+                  violationText += `       *Description:* ${desc}\n`;
+                }
+                
+                if (detail.tags) {
+                  // Show first few tags only
+                  const tags = detail.tags.split(',').slice(0, 3).join(', ');
+                  violationText += `       *Tags:* ${tags}${detail.tags.split(',').length > 3 ? '...' : ''}\n`;
+                }
+                
+                if (detail.moreInfo) {
+                  violationText += `       *More Info:* ${detail.moreInfo}\n`;
+                }
+              });
+            }
+            
+            violationText += '\n';
+            
+            // Check if adding this would exceed limit
             if (details.length + violationText.length <= MAX_LENGTH) {
               details += violationText;
+            } else {
+              // Add truncated version
+              const truncatedText = `  📊 *Accessibility Results:* ${violation.critical + violation.serious + violation.moderate + violation.minor} violation(s) found (see logs for details)\n`;
+              if (details.length + truncatedText.length <= MAX_LENGTH) {
+                details += truncatedText;
+              }
             }
           });
         }
