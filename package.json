@@ -26,7 +26,10 @@
   "devDependencies": {
     "cypress": "^15.5.0",
     "cypress-if": "^1.10.5",
-    "cypress-xpath": "^2.0.1"
+    "cypress-xpath": "^2.0.1",
+    "mochawesome": "^7.1.4",
+    "mochawesome-merge": "^5.0.0",
+    "mochawesome-report-generator": "^6.3.2"
   },
   "dependencies": {
     "aggregate-error": "^3.1.0",
