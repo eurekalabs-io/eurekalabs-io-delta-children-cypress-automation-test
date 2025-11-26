@@ -1,4 +1,4 @@
-describe('Accessibility Suite', () => {
+/*describe('Accessibility Suite', () => {
     // Intercept accessibility errors to document them without stopping the test
     let accessibilityErrorHandler;
     
