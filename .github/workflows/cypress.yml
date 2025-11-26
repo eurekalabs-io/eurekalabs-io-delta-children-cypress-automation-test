@@ -49,8 +49,10 @@ jobs:
           fi
       
       - name: Cypress run (without recording)
+        id: cypress-run
         if: steps.check-recording.outputs.recording_enabled == 'false'
         uses: cypress-io/github-action@v6
+        continue-on-error: true
         with:
           wait-on: 'https://www.deltachildren.com/'
           wait-on-timeout: 120
@@ -59,8 +61,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Cypress run (with recording)
+        id: cypress-run
         if: steps.check-recording.outputs.recording_enabled == 'true'
         uses: cypress-io/github-action@v6
+        continue-on-error: true
         with:
           wait-on: 'https://www.deltachildren.com/'
           wait-on-timeout: 120
@@ -72,6 +76,18 @@ jobs:
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set Cypress result
+        id: cypress-result
+        if: always()
+        run: |
+          if [ "${{ steps.cypress-run.outcome }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "result=PASSED" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "result=FAILED" >> $GITHUB_OUTPUT
+          fi
       
       - name: Upload Cypress screenshots
         uses: actions/upload-artifact@v4
@@ -133,6 +149,8 @@ jobs:
           GITHUB_REF: ${{ github.ref }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_WORKFLOW: ${{ github.workflow }}
+          CYPRESS_RESULT: ${{ steps.cypress-result.outputs.result }}
+          CYPRESS_STATUS: ${{ steps.cypress-run.outcome }}
         run: |
           node scripts/slack-notifier.js || echo "Slack notification failed, but continuing..."
 

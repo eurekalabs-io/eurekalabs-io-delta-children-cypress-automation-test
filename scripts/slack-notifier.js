@@ -17,6 +17,8 @@ const GITHUB_SHA = process.env.GITHUB_SHA || '';
 const GITHUB_REF = process.env.GITHUB_REF || 'main';
 const GITHUB_ACTOR = process.env.GITHUB_ACTOR || 'Delta Children';
 const GITHUB_WORKFLOW = process.env.GITHUB_WORKFLOW || 'Cypress Tests';
+const CYPRESS_RESULT = process.env.CYPRESS_RESULT || '';
+const CYPRESS_STATUS = process.env.CYPRESS_STATUS || '';
 
 // Colors for Slack messages
 const colors = {
@@ -994,6 +996,17 @@ function createSlackMessage(summary, results) {
       short: true
     }
   ];
+  
+  // Add Cypress execution result if available
+  if (CYPRESS_RESULT || CYPRESS_STATUS) {
+    const cypressResult = CYPRESS_RESULT || (CYPRESS_STATUS === 'success' ? 'PASSED' : CYPRESS_STATUS === 'failure' ? 'FAILED' : 'UNKNOWN');
+    const cypressEmoji = cypressResult === 'PASSED' ? '✅' : cypressResult === 'FAILED' ? '❌' : '⚠️';
+    fields.push({
+      title: 'Cypress Execution',
+      value: `${cypressEmoji} *${cypressResult}*`,
+      short: true
+    });
+  }
   
   // Add test files if available
   if (testFiles.length > 0) {
