@@ -49,7 +49,7 @@ jobs:
           fi
       
       - name: Cypress run (without recording)
-        id: cypress-run
+        id: cypress-run-no-recording
         if: steps.check-recording.outputs.recording_enabled == 'false'
         uses: cypress-io/github-action@v6
         continue-on-error: true
@@ -61,7 +61,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Cypress run (with recording)
-        id: cypress-run
+        id: cypress-run-recording
         if: steps.check-recording.outputs.recording_enabled == 'true'
         uses: cypress-io/github-action@v6
         continue-on-error: true
@@ -81,7 +81,14 @@ jobs:
         id: cypress-result
         if: always()
         run: |
-          if [ "${{ steps.cypress-run.outcome }}" == "success" ]; then
+          # Check which step ran and get its outcome
+          if [ "${{ steps.check-recording.outputs.recording_enabled }}" == "false" ]; then
+            CYPRESS_OUTCOME="${{ steps.cypress-run-no-recording.outcome }}"
+          else
+            CYPRESS_OUTCOME="${{ steps.cypress-run-recording.outcome }}"
+          fi
+          
+          if [ "$CYPRESS_OUTCOME" == "success" ]; then
             echo "status=success" >> $GITHUB_OUTPUT
             echo "result=PASSED" >> $GITHUB_OUTPUT
           else
@@ -150,7 +157,7 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_WORKFLOW: ${{ github.workflow }}
           CYPRESS_RESULT: ${{ steps.cypress-result.outputs.result }}
-          CYPRESS_STATUS: ${{ steps.cypress-run.outcome }}
+          CYPRESS_STATUS: ${{ steps.cypress-result.outputs.status }}
         run: |
           node scripts/slack-notifier.js || echo "Slack notification failed, but continuing..."
 
