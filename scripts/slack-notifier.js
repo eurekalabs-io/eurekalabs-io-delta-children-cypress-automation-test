@@ -673,52 +673,169 @@ function extractAccessibilityViolations(test) {
     return null;
   };
   
-  // Collect all text sources
+  // Collect all text sources from various places where Cypress logs might be stored
   const textSources = [];
+  
+  // Debug: Log what we're checking
+  const testTitle = test.title || test.fullTitle || 'Unknown';
+  console.log(`🔍 Extracting accessibility violations for test: "${testTitle}"`);
   
   // Check test code blocks
   if (test.code && Array.isArray(test.code)) {
-    test.code.forEach(codeBlock => {
+    console.log(`   Checking test.code (${test.code.length} blocks)`);
+    test.code.forEach((codeBlock, idx) => {
       if (codeBlock) {
         const text = typeof codeBlock === 'string' ? codeBlock : JSON.stringify(codeBlock);
         textSources.push(text);
+        // Check if it contains accessibility keywords
+        if (text.includes('ACCESSIBILITY') || text.includes('VIOLATION') || text.includes('CRITICAL') || text.includes('SERIOUS')) {
+          console.log(`   ✅ Found accessibility content in code block ${idx + 1}`);
+        }
       }
     });
   }
   
   // Check error messages
   if (test.err) {
+    console.log(`   Checking test.err`);
     const errorText = test.err.message || test.err.estack || JSON.stringify(test.err);
     textSources.push(errorText);
+    if (errorText.includes('ACCESSIBILITY') || errorText.includes('VIOLATION')) {
+      console.log(`   ✅ Found accessibility content in error`);
+    }
   }
   
-  // Check test context (for Cypress logs)
+  // Check test context (for Cypress logs) - this is where cy.log() output often goes
   if (test.context && Array.isArray(test.context)) {
-    test.context.forEach(ctx => {
-      if (ctx && ctx.value) {
-        const text = typeof ctx.value === 'string' ? ctx.value : JSON.stringify(ctx.value);
-        textSources.push(text);
+    console.log(`   Checking test.context (${test.context.length} entries)`);
+    test.context.forEach((ctx, idx) => {
+      if (ctx) {
+        // Context can have different structures
+        let text = '';
+        if (typeof ctx === 'string') {
+          text = ctx;
+        } else if (ctx.value) {
+          text = typeof ctx.value === 'string' ? ctx.value : JSON.stringify(ctx.value);
+        } else if (ctx.message) {
+          text = ctx.message;
+        } else {
+          text = JSON.stringify(ctx);
+        }
+        
+        if (text) {
+          textSources.push(text);
+          // Check if it contains accessibility keywords
+          if (text.includes('ACCESSIBILITY') || text.includes('VIOLATION') || text.includes('CRITICAL') || text.includes('SERIOUS')) {
+            console.log(`   ✅ Found accessibility content in context ${idx + 1}: ${text.substring(0, 100)}...`);
+          }
+        }
       }
     });
   }
   
-  // Check logs (if available)
+  // Check logs array (if available)
   if (test.logs && Array.isArray(test.logs)) {
-    test.logs.forEach(log => {
-      if (log && typeof log === 'string') {
-        textSources.push(log);
-      } else if (log && log.message) {
-        textSources.push(log.message);
+    console.log(`   Checking test.logs (${test.logs.length} entries)`);
+    test.logs.forEach((log, idx) => {
+      if (log) {
+        let text = '';
+        if (typeof log === 'string') {
+          text = log;
+        } else if (log.message) {
+          text = log.message;
+        } else if (log.value) {
+          text = typeof log.value === 'string' ? log.value : JSON.stringify(log.value);
+        } else {
+          text = JSON.stringify(log);
+        }
+        
+        if (text) {
+          textSources.push(text);
+          if (text.includes('ACCESSIBILITY') || text.includes('VIOLATION')) {
+            console.log(`   ✅ Found accessibility content in log ${idx + 1}`);
+          }
+        }
       }
     });
+  }
+  
+  // Also check the entire test object as JSON string (fallback)
+  try {
+    const testJson = JSON.stringify(test);
+    if (testJson.includes('ACCESSIBILITY') || testJson.includes('VIOLATION') || testJson.includes('CRITICAL') || testJson.includes('SERIOUS')) {
+      console.log(`   ✅ Found accessibility keywords in test JSON`);
+      // Extract relevant portion
+      const accessibilityMatch = testJson.match(/ACCESSIBILITY[\s\S]{0,5000}/i);
+      if (accessibilityMatch) {
+        textSources.push(accessibilityMatch[0]);
+      }
+    }
+  } catch (e) {
+    // Ignore JSON stringify errors
+  }
+  
+  console.log(`   Total text sources collected: ${textSources.length}`);
+  
+  // First, try to read from JSON files (most reliable)
+  const testName = test.title || test.fullTitle || 'Unknown Test';
+  const fileViolations = readAccessibilityViolationsFromFiles(testName);
+  
+  if (fileViolations.length > 0) {
+    console.log(`   ✅ Found violations from JSON files`);
+    // Convert file format to our format
+    fileViolations.forEach(fileViolation => {
+      const result = {
+        testName: fileViolation.testName || testName,
+        critical: fileViolation.violationsByImpact?.critical || 0,
+        serious: fileViolation.violationsByImpact?.serious || 0,
+        moderate: fileViolation.violationsByImpact?.moderate || 0,
+        minor: fileViolation.violationsByImpact?.minor || 0,
+        details: []
+      };
+      
+      // Convert violations to details format
+      if (fileViolation.violations && Array.isArray(fileViolation.violations)) {
+        fileViolation.violations.forEach(v => {
+          result.details.push({
+            impact: v.impact || 'N/A',
+            ruleId: v.id || v.rule || 'N/A',
+            tags: v.tags ? (Array.isArray(v.tags) ? v.tags.join(', ') : v.tags) : '',
+            selectors: v.nodes && v.nodes.length > 0 ? v.nodes[0].target?.join(' ') || '' : '',
+            description: v.description || v.message || 'N/A',
+            moreInfo: v.helpUrl || v.help || ''
+          });
+        });
+      }
+      
+      violations.push(result);
+    });
+    
+    // If we found violations from files, return them (they're more reliable)
+    if (violations.length > 0) {
+      return violations;
+    }
   }
   
   // Process all text sources
   const combinedText = textSources.join('\n');
+  
+  // Debug: Check if combined text has accessibility content
+  if (combinedText.includes('ACCESSIBILITY') || combinedText.includes('VIOLATION') || combinedText.includes('CRITICAL') || combinedText.includes('SERIOUS')) {
+    console.log(`   ✅ Combined text contains accessibility keywords`);
+    // Log a sample of the text for debugging
+    const sample = combinedText.substring(0, 500);
+    console.log(`   Sample text: ${sample}...`);
+  } else {
+    console.log(`   ⚠️ No accessibility keywords found in combined text`);
+  }
+  
   const violationData = extractFromText(combinedText);
   
   if (violationData) {
+    console.log(`   ✅ Extracted violation data: CRITICAL=${violationData.critical}, SERIOUS=${violationData.serious}, MODERATE=${violationData.moderate}, MINOR=${violationData.minor}, Details=${violationData.details.length}`);
     violations.push(violationData);
+  } else {
+    console.log(`   ⚠️ No violation data extracted`);
   }
   
   return violations;
