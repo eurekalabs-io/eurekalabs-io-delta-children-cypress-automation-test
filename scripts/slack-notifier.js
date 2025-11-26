@@ -353,15 +353,26 @@ function getTestSuitesSummary(results) {
         // Determine display title - prefer suite title from describe() block, fallback to filename
         let displayTitle = suiteTitle;
         if (!displayTitle || displayTitle === '') {
-          // Try to extract suite title from nested suites
+          // Try to extract suite title from nested suites (describe blocks)
+          // This is important because mochawesome often puts the describe() title in nested suites
           if (result.suites && result.suites.length > 0) {
-            const firstNestedSuite = result.suites[0];
-            displayTitle = firstNestedSuite.fullTitle || firstNestedSuite.title || '';
+            // Look for the first suite with a title (this should be the describe block)
+            for (const nestedSuite of result.suites) {
+              const nestedTitle = nestedSuite.fullTitle || nestedSuite.title || '';
+              if (nestedTitle && nestedTitle !== '') {
+                displayTitle = nestedTitle;
+                console.log(`   📝 Found suite title from nested suite: "${displayTitle}"`);
+                break;
+              }
+            }
           }
           // If still no title, use filename
           if (!displayTitle || displayTitle === '') {
             displayTitle = fileName || `Test File ${idx + 1}`;
+            console.log(`   📝 Using filename as suite title: "${displayTitle}"`);
           }
+        } else {
+          console.log(`   📝 Using top-level suite title: "${displayTitle}"`);
         }
         
         suites.push({
@@ -385,10 +396,22 @@ function getTestSuitesSummary(results) {
     }
   });
   
-  // Second pass: Process nested suites recursively (for detailed structure)
-  // This ensures we capture any nested suites that might have been missed
+  // Second pass: Process nested suites recursively ONLY if they weren't captured in first pass
+  // This is a safety net to ensure we don't miss any suites
+  // But we need to be careful not to add duplicates
   results.results.forEach((suite) => {
-    extractTestsFromSuite(suite);
+    // Only process if this suite wasn't already added as a top-level suite
+    const filePath = suite.file || '';
+    const fileName = filePath ? path.basename(filePath) : '';
+    const alreadyAddedAsTopLevel = suites.some(s => fileName && s.file === fileName);
+    
+    // Only call extractTestsFromSuite if we haven't already added this file as a top-level suite
+    // This prevents adding nested suites that would duplicate the top-level suite
+    if (!alreadyAddedAsTopLevel) {
+      extractTestsFromSuite(suite);
+    } else {
+      console.log(`   ⏭️ Skipping second pass for "${fileName}" - already added as top-level suite`);
+    }
   });
   
   console.log(`📊 Extracted ${suites.length} suite(s) with tests`);
@@ -403,10 +426,18 @@ function getTestSuitesSummary(results) {
       if (suite.tests && suite.tests.length > 0) {
         console.log(`     First test: ${suite.tests[0].title || suite.tests[0].fullTitle || 'N/A'}`);
       }
+      // Also check nested suites
+      if (suite.suites && suite.suites.length > 0) {
+        suite.suites.forEach((nested, nIdx) => {
+          const nestedTests = collectAllTests(nested);
+          console.log(`     Nested Suite ${nIdx + 1}: "${nested.title || nested.fullTitle || 'N/A'}" - ${nestedTests.length} tests`);
+        });
+      }
     });
   } else {
+    console.log(`\n📋 Final suites summary:`);
     suites.forEach((suite, idx) => {
-      console.log(`   Suite ${idx + 1}: "${suite.title}" - ${suite.total} tests (file: ${suite.file || 'N/A'})`);
+      console.log(`   Suite ${idx + 1}: "${suite.title}" - ${suite.total} tests (file: ${suite.file || 'N/A'}, passed: ${suite.passed}, failed: ${suite.failed})`);
     });
   }
   
