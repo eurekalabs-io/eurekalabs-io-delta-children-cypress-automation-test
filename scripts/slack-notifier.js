@@ -263,18 +263,12 @@ function getTestSuitesSummary(results) {
       
       // Check if we already added this suite (avoid duplicates)
       // Use a more flexible check for top-level suites
+      // IMPORTANT: Only check by file name for top-level suites to avoid false positives
       const alreadyAdded = suites.some(s => {
         if (isTopLevel) {
-          // For top-level suites, check by file name (most reliable) or title match
-          // Be more lenient to catch all suites
+          // For top-level suites, ONLY check by file name (most reliable)
+          // This ensures each file gets its own suite entry
           if (fileName && s.file === fileName) {
-            return true;
-          }
-          if (displayTitle !== 'Unknown Suite' && s.title === displayTitle) {
-            return true;
-          }
-          // Also check if suite title matches (case-insensitive partial match)
-          if (suiteTitle && s.title && s.title.toLowerCase().includes(suiteTitle.toLowerCase())) {
             return true;
           }
           return false;
@@ -317,47 +311,36 @@ function getTestSuitesSummary(results) {
   };
   
   // Process all top-level suites
+  // CRITICAL: Process each top-level result and ensure it's added as a suite
   console.log(`📋 Processing ${results.results.length} top-level result(s)...`);
-  results.results.forEach((suite, idx) => {
-    console.log(`   Top-level result ${idx + 1}:`);
-    console.log(`     Title: ${suite.title || suite.fullTitle || 'N/A'}`);
-    console.log(`     File: ${suite.file || 'N/A'}`);
-    console.log(`     Has suites: ${!!(suite.suites && suite.suites.length > 0)}`);
-    console.log(`     Has tests: ${!!(suite.tests && suite.tests.length > 0)}`);
-    extractTestsFromSuite(suite);
-  });
   
-  // Also check if there are tests directly in results.results without suite wrapper
-  // This can happen when tests don't have a describe() block
-  // Also check for top-level results that might have been missed
-  // This is a critical fallback to ensure we capture ALL suites
+  // First pass: Process each top-level result and add it as a suite if it has tests
   results.results.forEach((result, idx) => {
     const filePath = result.file || '';
     const fileName = filePath ? path.basename(filePath) : '';
     const suiteTitle = result.fullTitle || result.title || '';
     
+    console.log(`   Top-level result ${idx + 1}:`);
+    console.log(`     Title: ${suiteTitle || 'N/A'}`);
+    console.log(`     File: ${fileName || 'N/A'}`);
+    console.log(`     Has suites: ${!!(result.suites && result.suites.length > 0)}`);
+    console.log(`     Has tests: ${!!(result.tests && result.tests.length > 0)}`);
+    
     // Collect all tests from this result (including nested suites)
     const allTestsFromResult = collectAllTests(result);
+    console.log(`     Total tests collected: ${allTestsFromResult.length}`);
     
-    // If this result has tests but wasn't added yet, add it
+    // If this result has tests, ensure it's added as a suite
     if (allTestsFromResult.length > 0) {
-      // Check if we already added this suite (more lenient check)
+      // Check if we already added this suite by file name (most reliable identifier)
       const alreadyAdded = suites.some(s => {
-        // Check by file name (most reliable)
+        // Primary check: by file name (most reliable)
         if (fileName && s.file === fileName) {
           return true;
         }
-        // Check by exact title match
+        // Secondary check: by exact title match
         if (suiteTitle && s.title === suiteTitle) {
           return true;
-        }
-        // Check by partial title match (case-insensitive) for suites with similar names
-        if (suiteTitle && s.title) {
-          const suiteTitleLower = suiteTitle.toLowerCase();
-          const sTitleLower = s.title.toLowerCase();
-          if (suiteTitleLower.includes(sTitleLower) || sTitleLower.includes(suiteTitleLower)) {
-            return true;
-          }
         }
         return false;
       });
@@ -367,9 +350,19 @@ function getTestSuitesSummary(results) {
         const failed = allTestsFromResult.filter(t => t.state === 'failed').length;
         const pending = allTestsFromResult.filter(t => t.state === 'pending').length;
         
-        // Use suite title, file name, or fallback
-        // Prefer suiteTitle over fileName to get the actual suite name
-        const displayTitle = suiteTitle || fileName || `Test File ${idx + 1}`;
+        // Determine display title - prefer suite title from describe() block, fallback to filename
+        let displayTitle = suiteTitle;
+        if (!displayTitle || displayTitle === '') {
+          // Try to extract suite title from nested suites
+          if (result.suites && result.suites.length > 0) {
+            const firstNestedSuite = result.suites[0];
+            displayTitle = firstNestedSuite.fullTitle || firstNestedSuite.title || '';
+          }
+          // If still no title, use filename
+          if (!displayTitle || displayTitle === '') {
+            displayTitle = fileName || `Test File ${idx + 1}`;
+          }
+        }
         
         suites.push({
           title: displayTitle,
@@ -383,13 +376,19 @@ function getTestSuitesSummary(results) {
           tests: allTestsFromResult
         });
         
-        console.log(`📋 Added result-level suite (fallback): "${displayTitle}" from ${fileName || 'unknown file'} with ${allTestsFromResult.length} tests`);
+        console.log(`   ✅ Added suite "${displayTitle}" from ${fileName || 'unknown file'} with ${allTestsFromResult.length} tests`);
       } else {
-        console.log(`📋 Skipping result ${idx + 1} "${suiteTitle || fileName}" - already added`);
+        console.log(`   ⏭️ Skipping result ${idx + 1} "${suiteTitle || fileName}" - already added`);
       }
     } else {
-      console.log(`📋 Result ${idx + 1} "${suiteTitle || fileName}" has no tests, skipping`);
+      console.log(`   ⚠️ Result ${idx + 1} "${suiteTitle || fileName}" has no tests, skipping`);
     }
+  });
+  
+  // Second pass: Process nested suites recursively (for detailed structure)
+  // This ensures we capture any nested suites that might have been missed
+  results.results.forEach((suite) => {
+    extractTestsFromSuite(suite);
   });
   
   console.log(`📊 Extracted ${suites.length} suite(s) with tests`);
