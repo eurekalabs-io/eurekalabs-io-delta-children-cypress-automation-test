@@ -264,17 +264,38 @@ function getTestSuitesSummary(results) {
       // Check if we already added this suite (avoid duplicates)
       // Use a more flexible check for top-level suites
       // IMPORTANT: Only check by file name for top-level suites to avoid false positives
+      const normalizeFileName = (file) => {
+        if (!file) return '';
+        // Extract basename if it's a full path
+        if (file.includes(path.sep) || file.includes('/') || file.includes('\\')) {
+          return path.basename(file);
+        }
+        return file;
+      };
+      
+      const normalizedFileName = normalizeFileName(fileName);
+      
       const alreadyAdded = suites.some(s => {
         if (isTopLevel) {
-          // For top-level suites, ONLY check by file name (most reliable)
+          // For top-level suites, check by normalized file name (most reliable)
           // This ensures each file gets its own suite entry
-          if (fileName && s.file === fileName) {
+          if (normalizedFileName) {
+            const sNormalized = normalizeFileName(s.file);
+            if (sNormalized && sNormalized === normalizedFileName) {
+              console.log(`   🔍 Duplicate detected: "${normalizedFileName}" already added as "${s.title}"`);
+              return true;
+            }
+          }
+          // Also check by title if file name is not available
+          if (!normalizedFileName && displayTitle && s.title === displayTitle) {
+            console.log(`   🔍 Duplicate detected by title: "${displayTitle}" already added`);
             return true;
           }
           return false;
         } else {
           // For nested suites, check by exact title and file match
-          return s.title === displayTitle && s.file === fileName;
+          const sNormalized = normalizeFileName(s.file);
+          return s.title === displayTitle && sNormalized === normalizedFileName;
         }
       });
       
@@ -332,14 +353,31 @@ function getTestSuitesSummary(results) {
     
     // If this result has tests, ensure it's added as a suite
     if (allTestsFromResult.length > 0) {
+      // Normalize file names for comparison
+      const normalizeFileName = (file) => {
+        if (!file) return '';
+        // Extract basename if it's a full path
+        if (file.includes(path.sep) || file.includes('/') || file.includes('\\')) {
+          return path.basename(file);
+        }
+        return file;
+      };
+      
+      const normalizedFileName = normalizeFileName(fileName);
+      
       // Check if we already added this suite by file name (most reliable identifier)
       const alreadyAdded = suites.some(s => {
-        // Primary check: by file name (most reliable)
-        if (fileName && s.file === fileName) {
-          return true;
+        // Primary check: by normalized file name (most reliable)
+        if (normalizedFileName) {
+          const sNormalized = normalizeFileName(s.file);
+          if (sNormalized && sNormalized === normalizedFileName) {
+            console.log(`   🔍 First pass: Duplicate detected by file name: "${normalizedFileName}" already added as "${s.title}"`);
+            return true;
+          }
         }
         // Secondary check: by exact title match
         if (suiteTitle && s.title === suiteTitle) {
+          console.log(`   🔍 First pass: Duplicate detected by title: "${suiteTitle}" already added`);
           return true;
         }
         return false;
@@ -400,17 +438,36 @@ function getTestSuitesSummary(results) {
   // This is a safety net to ensure we don't miss any suites
   // But we need to be careful not to add duplicates
   results.results.forEach((suite) => {
+    // Normalize file names for comparison
+    const normalizeFileName = (file) => {
+      if (!file) return '';
+      // Extract basename if it's a full path
+      if (file.includes(path.sep) || file.includes('/') || file.includes('\\')) {
+        return path.basename(file);
+      }
+      return file;
+    };
+    
     // Only process if this suite wasn't already added as a top-level suite
     const filePath = suite.file || '';
     const fileName = filePath ? path.basename(filePath) : '';
-    const alreadyAddedAsTopLevel = suites.some(s => fileName && s.file === fileName);
+    const normalizedFileName = normalizeFileName(fileName);
+    
+    const alreadyAddedAsTopLevel = suites.some(s => {
+      if (normalizedFileName) {
+        const sNormalized = normalizeFileName(s.file);
+        return sNormalized && sNormalized === normalizedFileName;
+      }
+      return false;
+    });
     
     // Only call extractTestsFromSuite if we haven't already added this file as a top-level suite
     // This prevents adding nested suites that would duplicate the top-level suite
     if (!alreadyAddedAsTopLevel) {
+      console.log(`   🔄 Second pass: Processing "${fileName || suite.title || 'unknown'}" - not found in first pass`);
       extractTestsFromSuite(suite);
     } else {
-      console.log(`   ⏭️ Skipping second pass for "${fileName}" - already added as top-level suite`);
+      console.log(`   ⏭️ Skipping second pass for "${fileName || suite.title || 'unknown'}" - already added as top-level suite`);
     }
   });
   
