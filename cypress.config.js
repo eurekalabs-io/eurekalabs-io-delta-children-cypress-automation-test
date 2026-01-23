@@ -2,6 +2,8 @@ const { defineConfig } = require("cypress");
 
 // Import the accessibility tasks from wick-a11y plugin
 const addAccessibilityTasks = require('wick-a11y/accessibility-tasks');
+// Import cypress-image-diff plugin
+const { addMatchImageSnapshotPlugin } = require('cypress-image-diff/plugin');
 
 module.exports = defineConfig({
   e2e: {
@@ -23,8 +25,10 @@ module.exports = defineConfig({
       inline: true
     },
     setupNodeEvents(on, config) {
-         // Add accessibility tasks
+      // Add accessibility tasks
       addAccessibilityTasks(on);
+      // Add image diff plugin (solo requiere 'on', no 'config')
+      addMatchImageSnapshotPlugin(on);
       // Reduce memory usage by disabling video
       config.video = false;
       // Enable screenshots for accessibility tests (handled in test)
@@ -37,14 +41,20 @@ module.exports = defineConfig({
     projectId: 'ds6q9s',
     // Lower memory footprint by reducing concurrency and junk collector pressure
     numTestsKeptInMemory: 1,
-    viewportWidth: 1366,
-    viewportHeight: 768,
+    viewportWidth: 1728, // MacBook Pro 16" (viewport)
+    viewportHeight: 1117,
     retries: { runMode: 2, openMode: 0 },
-    experimentalMemoryManagement: true,
-    // Chrome flags to limit GPU/renderer memory usage
-    browser: 'chrome',
     env: {
-      CYPRESS_INTERNAL_ENV: 'production'
+      CYPRESS_INTERNAL_ENV: 'production',
+      // Configuración de ambientes para comparación visual
+      // Ambiente base (por defecto: producción)
+      BASE_ENV_URL: process.env.BASE_ENV_URL || 'https://www.deltachildren.com/',
+      // Ambiente a comparar (por defecto: staging o desarrollo)
+      COMPARE_ENV_URL: process.env.COMPARE_ENV_URL || 'https://tyh68bklvgoqhgvq-52269121736.shopifypreview.com/',
+      // Habilitar comparación entre ambientes (habilitado por defecto)
+      ENABLE_ENV_COMPARISON: process.env.ENABLE_ENV_COMPARISON !== 'false',
+      // Modo de comparación: 'create-base' para crear snapshots base, 'compare' para comparar
+      ENV_COMPARISON_MODE: process.env.ENV_COMPARISON_MODE || 'compare'
     },
     // Optimize test execution
     requestTimeout: 30000,

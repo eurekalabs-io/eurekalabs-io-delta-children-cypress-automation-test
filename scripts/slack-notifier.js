@@ -931,7 +931,14 @@ function extractFilesFromTitles(suites, results = null) {
     'Nursery Sets': 'Nurserysets.cy.js',
     'Nursery Set': 'Nurserysets.cy.js',
     'Accessibility Suite': 'accessibilityTest.cy.js',
-    'Accessibility': 'accessibilityTest.cy.js'
+    'Accessibility': 'accessibilityTest.cy.js',
+    'Regresión Visual': 'regressionVisualTesting.cy.js',
+    'Regresión Visual - Desktop y Mobile': 'regressionVisualTesting.cy.js',
+    'Visual Regression': 'regressionVisualTesting.cy.js',
+    'Comparación entre Ambientes': 'regressionVisualTesting.cy.js',
+    'Comparación entre Ambientes - Desktop y Mobile': 'regressionVisualTesting.cy.js',
+    'Regresión Visual - Desktop': 'regressionVisualTesting.cy.js',
+    'Regresión Visual - Mobile': 'regressionVisualTesting.cy.js'
   };
   
   const foundFiles = new Set();

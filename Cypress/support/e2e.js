@@ -16,8 +16,20 @@
 // Import commands.js using ES2015 syntax:
 import './commands'
 import 'wick-a11y';
-// Alternatively you can use CommonJS syntax:
-// require('./commands')
+
+// Import cypress-image-diff commands
+// Cypress can handle CommonJS modules with ES6 import syntax
+const cypressImageDiff = require('cypress-image-diff/command');
+const { addMatchImageSnapshotCommand, addCleanupDiffOutputCommand } = cypressImageDiff;
+
+// Add cypress-image-diff commands
+addMatchImageSnapshotCommand({
+  failureThreshold: 0.2, // threshold for entire image (20%)
+  failureThresholdType: 'percent', // percent of image or number of pixels
+  customDiffConfig: { threshold: 0.1 }, // threshold for each pixel
+  capture: 'fullPage' // capture full page in screenshot
+});
+addCleanupDiffOutputCommand();
 
 // Hide TypeError and other uncaught exceptions so tests don't fail on app errors
 Cypress.on("uncaught:exception", () => {

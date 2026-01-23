@@ -118,10 +118,24 @@ describe('Accessibility Suite', () => {
                                 id: violation.id || violation.rule || 'N/A',
                                 description: (violation.description || violation.message || 'No description').substring(0, 150),
                                 nodes: violation.nodes ? violation.nodes.length : 0,
-                                help: violation.help ? violation.help.substring(0, 100) : 'N/A'
+                                help: violation.help ? violation.help.substring(0, 100) : 'N/A',
+                                url: pageUrl || 'N/A'
                             };
                             cy.log(`  ${index + 1}. [${violationInfo.id}] ${violationInfo.description}`);
+                            cy.log(`     URL: ${violationInfo.url}`);
                             cy.log(`     Affected nodes: ${violationInfo.nodes} | Help: ${violationInfo.help}`);
+                            
+                            // Log node details with URLs if available
+                            if (violation.nodes && violation.nodes.length > 0) {
+                                violation.nodes.forEach((node, nodeIndex) => {
+                                    if (node.target && node.target.length > 0) {
+                                        cy.log(`     Node ${nodeIndex + 1}: ${node.target.join(' > ')}`);
+                                    }
+                                    if (node.html) {
+                                        cy.log(`     HTML: ${node.html.substring(0, 100)}...`);
+                                    }
+                                });
+                            }
                         });
                     }
                 });
@@ -147,7 +161,17 @@ describe('Accessibility Suite', () => {
                         id: v.id || v.rule,
                         impact: v.impact,
                         description: v.description || v.message,
-                        nodesCount: v.nodes ? v.nodes.length : 0
+                        nodesCount: v.nodes ? v.nodes.length : 0,
+                        url: pageUrl || 'N/A',
+                        help: v.help || 'N/A',
+                        helpUrl: v.helpUrl || 'N/A',
+                        nodes: v.nodes ? v.nodes.map(node => ({
+                            target: node.target || [],
+                            html: node.html || '',
+                            any: node.any || [],
+                            all: node.all || [],
+                            none: node.none || []
+                        })) : []
                     }))
                 };
                 
