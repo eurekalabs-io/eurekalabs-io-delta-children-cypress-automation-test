@@ -30,7 +30,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No usar cache para evitar conflictos con --legacy-peer-deps
+          cache: ''
       
       - name: Install dependencies
         run: |
@@ -109,6 +110,7 @@ jobs:
           wait-on-timeout: 120
           browser: chrome
           config-file: cypress.config.js
+          install: false  # No instalar dependencias, ya están instaladas
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
@@ -126,6 +128,7 @@ jobs:
           group: 'Delta Children Tests'
           ci-build-id: ${{ github.run_id }}
           config-file: cypress.config.js
+          install: false  # No instalar dependencias, ya están instaladas
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
