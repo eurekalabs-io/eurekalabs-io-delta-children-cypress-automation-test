@@ -24,7 +24,7 @@ export default class ProductDetailsPage extends BasePage {
       const countOfElements = $elements.length;
       
       if (countOfElements === 0) {
-        // No hay productos para seleccionar, esto es normal en algunos casos
+        // No products to select, this is normal in some cases
         return;
       }
       
@@ -39,30 +39,30 @@ export default class ProductDetailsPage extends BasePage {
         const contentCount = $contentElements.length;
         
         if (contentCount === 0) {
-          // No hay elementos de contenido, esto puede ser normal
+          // No content elements, this may be normal
           return;
         }
         
-        // Procesar cada producto usando cy.wrap para encadenar correctamente los comandos
+        // Process each product using cy.wrap to correctly chain commands
         cy.wrap(Array.from({ length: Math.min(countOfElements, contentCount) }, (_, i) => i)).each((cuenta) => {
-          // Hacer click en el producto
+          // Click on the product
           cy.get(productContentSelector)
             .eq(cuenta)
             .click({force:true})
           
-          // Esperar un momento para que el componente se cargue después del click
+          // Wait a moment for the component to load after click
           BasePage.pause(500)
           
-          // Verificar si components-section existe y buscar el botón
+          // Check if components-section exists and search for button
           cy.get('body').then(($body3) => {
             const componentsSection = $body3.find('.components-section');
             
             if (componentsSection.length > 0) {
-              // Verificar si el botón existe dentro del components-section
+              // Check if button exists within components-section
               const button = componentsSection.first().find('.cb-customizer-wrapper .cb-customizer .cb-customizer-footer .v2-button--primary');
               
               if (button.length > 0) {
-                // El botón existe, proceder con el click
+                // Button exists, proceed with click
                 cy.get('.components-section').first().within(() => {
                   cy.get('.cb-customizer-wrapper .cb-customizer .cb-customizer-footer .v2-button--primary')
                     .should('exist')
@@ -101,30 +101,30 @@ export default class ProductDetailsPage extends BasePage {
         const contentCount = $contentElements.length;
         
         if (contentCount === 0) {
-          // No hay elementos de contenido, esto puede ser normal
+          // No content elements, this may be normal
           return;
         }
         
-        // Procesar cada producto usando cy.wrap para encadenar correctamente los comandos
+        // Process each product using cy.wrap to correctly chain commands
         cy.wrap(Array.from({ length: Math.min(countOfElements, contentCount) }, (_, i) => i)).each((cuenta) => {
-          // Hacer click en el producto
+          // Click on the product
           cy.get(productContentSelector)
             .eq(cuenta)
             .click({force:true})
           
-          // Esperar un momento para que el componente se cargue después del click
+          // Wait a moment for the component to load after click
           BasePage.pause(500)
           
-          // Verificar si components-section existe y buscar el botón
+          // Check if components-section exists and search for button
           cy.get('body').then(($body3) => {
             const componentsSection = $body3.find('.components-section');
             
             if (componentsSection.length > 0) {
-              // Verificar si el botón existe dentro del components-section
+              // Check if button exists within components-section
               const button = componentsSection.first().find('.cb-customizer-wrapper .cb-customizer .cb-customizer-footer .v2-button--primary');
               
               if (button.length > 0) {
-                // El botón existe, proceder con el click
+                // Button exists, proceed with click
                 cy.get('.components-section').first().within(() => {
                   cy.get('.cb-customizer-wrapper .cb-customizer .cb-customizer-footer .v2-button--primary')
                     .should('exist')
