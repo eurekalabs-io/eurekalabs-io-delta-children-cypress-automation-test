@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
-describe('Regresión Visual - Desktop y Mobile', () => {
-  // URLs a probar para regresión visual
+describe('Visual Regression - Desktop and Mobile', () => {
+  // URLs to test for visual regression
   const urls = [
     {
       path: '/',
@@ -30,7 +30,7 @@ describe('Regresión Visual - Desktop y Mobile', () => {
     }
   ];
 
-  // Configuración de viewports para MacBooks, iPhone 14 Pro Max e iPad Pro
+  // Viewport configuration for MacBooks, iPhone 14 Pro Max and iPad Pro
   const viewports = [
     {
       name: 'MacBook Pro 16"',
@@ -58,15 +58,15 @@ describe('Regresión Visual - Desktop y Mobile', () => {
     }
   ];
 
-  // Función helper para esperar a que la página cargue completamente
+  // Helper function to wait for page to load completely
   const waitForPageLoad = () => {
-    // Esperar a que el body sea visible
+    // Wait for body to be visible
     cy.get('body').should('be.visible', { timeout: 30000 });
     
-    // Aceptar banner de cookies si aparece
+    // Accept cookie banner if present
     cy.acceptCookieBannerIfPresent();
     
-    // Esperar a que los elementos de carga desaparezcan
+    // Wait for loading elements to disappear
     cy.get('body').then(($body) => {
       const loadingSelectors = [
         '[class*="loading"]:visible',
@@ -82,24 +82,24 @@ describe('Regresión Visual - Desktop y Mobile', () => {
       }
     });
     
-    // Esperar a que las imágenes críticas carguen
+    // Wait for critical images to load
     cy.get('body').then(($body) => {
       const images = $body.find('img[src]:visible');
       if (images.length > 0) {
-        // Esperar a que al menos las primeras imágenes críticas carguen
+        // Wait for at least the first critical images to load
         cy.get('img[src]:visible').first().should('be.visible');
       }
     });
     
-    // Esperar un momento para que el DOM se estabilice
+    // Wait a moment for the DOM to stabilize
     cy.wait(1500);
     
-    // Scroll al inicio para asegurar consistencia en las capturas
+    // Scroll to top to ensure consistency in captures
     cy.scrollTo(0, 0);
     cy.wait(500);
   };
 
-  // Función helper para verificar si es una página de error
+  // Helper function to check if it's an error page
   const isErrorPage = ($body) => {
     const bodyText = $body.text().toLowerCase();
     const headings = $body.find('h1, h2').text().toLowerCase();
@@ -112,58 +112,58 @@ describe('Regresión Visual - Desktop y Mobile', () => {
            $body.find('.error-page, .not-found, [class*="error"]').length > 0;
   };
 
-  // Ejecutar pruebas para cada combinación de URL y viewport
+  // Run tests for each combination of URL and viewport
   urls.forEach(({ path, name, description }) => {
     viewports.forEach(({ name: viewportName, width, height, device }) => {
-      it(`debe comparar visualmente ${name} en ${viewportName}`, () => {
-        // Configurar viewport
+      it(`should visually compare ${name} on ${viewportName}`, () => {
+        // Set viewport
         cy.viewport(width, height);
         
-        // Visitar la URL
+        // Visit the URL
         cy.visit(path, { 
           failOnStatusCode: false, 
           timeout: 30000 
         });
 
-        // Esperar a que la página cargue
+        // Wait for page to load
         cy.get('body').should('be.visible', { timeout: 30000 });
         
-        // Verificar que no sea una página de error
+        // Verify it's not an error page
         cy.get('body').then(($body) => {
           if (isErrorPage($body)) {
-            cy.log(`⚠️ ${name} (${path}) no encontrada o es una página de error, omitiendo prueba`);
+            cy.log(`⚠️ ${name} (${path}) not found or is an error page, skipping test`);
             return;
           }
 
-          // Esperar a que la página cargue completamente
+          // Wait for page to load completely
           waitForPageLoad();
 
-          // Generar nombre único para la captura
+          // Generate unique name for capture
           const screenshotName = `${name}-${viewportName}`.replace(/\s+/g, '-').toLowerCase();
           
-          // Comparar con imagen base usando cypress-image-diff
-          // Si la imagen base no existe, esta será la primera ejecución y se creará automáticamente
+          // Compare with base image using cypress-image-diff
+          // If base image doesn't exist, this will be the first run and it will be created automatically
           cy.matchImageSnapshot(screenshotName, {
-            threshold: 0.2, // Umbral de diferencia permitida (20%)
+            threshold: 0.2, // Allowed difference threshold (20%)
             thresholdType: 'percent',
-            capture: 'fullPage', // Capturar toda la página
-            clip: undefined // Sin recorte
+            capture: 'fullPage', // Capture entire page
+            clip: undefined // No clipping
           });
 
-          cy.log(`✅ Comparación visual completada para ${name} en ${viewportName}`);
+          cy.log(`✅ Visual comparison completed for ${name} on ${viewportName}`);
         });
       });
     });
   });
 
-  // Pruebas adicionales: comparación de elementos específicos en desktop
-  describe('Comparación de Elementos Específicos - Desktop', () => {
+  // Additional tests: specific element comparison on desktop
+  describe('Specific Element Comparison - Desktop', () => {
     beforeEach(() => {
       cy.viewport(1728, 1117); // MacBook Pro 16"
     });
 
     urls.forEach(({ path, name }) => {
-      it(`debe comparar header de ${name} en Desktop`, () => {
+      it(`should compare header of ${name} on Desktop`, () => {
         cy.visit(path, { failOnStatusCode: false, timeout: 30000 });
         cy.get('body').should('be.visible', { timeout: 30000 });
         
@@ -171,37 +171,37 @@ describe('Regresión Visual - Desktop y Mobile', () => {
           if (!isErrorPage($body)) {
             waitForPageLoad();
             
-            // Buscar el header con múltiples selectores posibles
+            // Search for header with multiple possible selectors
             const headerSelectors = 'header, .header, nav, .navbar, [role="banner"]';
             cy.get(headerSelectors).first().should('be.visible').then(($header) => {
               if ($header.length > 0) {
-                // Comparar solo el header
+                // Compare only the header
                 cy.get(headerSelectors).first().matchImageSnapshot(`${name}-header-desktop`, {
                   threshold: 0.2,
                   thresholdType: 'percent'
                 });
                 
-                cy.log(`✅ Comparación de header completada para ${name} en Desktop`);
+                cy.log(`✅ Header comparison completed for ${name} on Desktop`);
               } else {
-                cy.log(`⚠️ Header no encontrado para ${name}, omitiendo comparación`);
+                cy.log(`⚠️ Header not found for ${name}, skipping comparison`);
               }
             });
           } else {
-            cy.log(`⚠️ ${name} (${path}) es una página de error, omitiendo prueba`);
+            cy.log(`⚠️ ${name} (${path}) is an error page, skipping test`);
           }
         });
       });
     });
   });
 
-  // Pruebas adicionales: comparación de elementos específicos en mobile
-  describe('Comparación de Elementos Específicos - Mobile', () => {
+  // Additional tests: specific element comparison on mobile
+  describe('Specific Element Comparison - Mobile', () => {
     beforeEach(() => {
       cy.viewport(430, 932); // iPhone 14 Pro Max
     });
 
     urls.forEach(({ path, name }) => {
-      it(`debe comparar header de ${name} en Mobile`, () => {
+      it(`should compare header of ${name} on Mobile`, () => {
         cy.visit(path, { failOnStatusCode: false, timeout: 30000 });
         cy.get('body').should('be.visible', { timeout: 30000 });
         
@@ -209,11 +209,11 @@ describe('Regresión Visual - Desktop y Mobile', () => {
           if (!isErrorPage($body)) {
             waitForPageLoad();
             
-            // Buscar el header con múltiples selectores posibles
+            // Search for header with multiple possible selectors
             const headerSelectors = 'header, .header, nav, .navbar, [role="banner"]';
             cy.get(headerSelectors).first().should('be.visible').then(($header) => {
               if ($header.length > 0) {
-                // Comparar solo el header
+                // Compare only the header
                 cy.get(headerSelectors).first().matchImageSnapshot(`${name}-header-mobile`, {
                   threshold: 0.2,
                   thresholdType: 'percent'
@@ -233,11 +233,11 @@ describe('Regresión Visual - Desktop y Mobile', () => {
   });
 });
 
-// Suite de pruebas para comparación entre dos ambientes diferentes
-// COMENTADO: Esta suite está deshabilitada temporalmente
+// Test suite for comparison between two different environments
+// COMMENTED: This suite is temporarily disabled
 /*
-describe('Comparación entre Ambientes - Desktop y Mobile', () => {
-  // URLs a probar para comparación entre ambientes
+describe('Environment Comparison - Desktop and Mobile', () => {
+  // URLs to test for environment comparison
   const urls = [
     {
       path: '/',
@@ -247,11 +247,11 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
     {
       path: '/collections/cribs',
       name: 'Cribs Collection',
-      description: 'Colección de Cribs'
+      description: 'Cribs Collection'
     }
   ];
 
-  // Configuración de viewports para MacBooks, iPhone 14 Pro Max e iPad Pro
+  // Viewport configuration for MacBooks, iPhone 14 Pro Max and iPad Pro
   const viewports = [
     {
       name: 'MacBook Pro 16"',
@@ -279,12 +279,12 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
     }
   ];
 
-  // Obtener URLs de ambientes desde variables de entorno
+  // Get environment URLs from environment variables
   const baseEnvUrl = Cypress.env('BASE_ENV_URL') || Cypress.config('baseUrl');
   const compareEnvUrl = Cypress.env('COMPARE_ENV_URL');
   const enableEnvComparison = Cypress.env('ENABLE_ENV_COMPARISON') || false;
 
-  // Función helper para esperar a que la página cargue completamente
+  // Helper function to wait for page to load completely
   const waitForPageLoad = () => {
     cy.get('body').should('be.visible', { timeout: 30000 });
     cy.acceptCookieBannerIfPresent();
@@ -316,7 +316,7 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
     cy.wait(500);
   };
 
-  // Función helper para verificar si es una página de error
+  // Helper function to check if it's an error page
   const isErrorPage = ($body) => {
     const bodyText = $body.text().toLowerCase();
     const headings = $body.find('h1, h2').text().toLowerCase();
@@ -329,7 +329,7 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
            $body.find('.error-page, .not-found, [class*="error"]').length > 0;
   };
 
-  // Función helper para visitar una URL completa (con dominio)
+  // Helper function to visit a full URL (with domain)
   const visitFullUrl = (baseUrl, path) => {
     const fullUrl = baseUrl.replace(/\/$/, '') + path;
     cy.visit(fullUrl, { 
@@ -338,17 +338,17 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
     });
   };
 
-  // Modo de operación: 'create-base' para crear snapshots base, 'compare' para comparar
+  // Operation mode: 'create-base' to create base snapshots, 'compare' to compare
   const envComparisonMode = Cypress.env('ENV_COMPARISON_MODE') || 'compare';
   
-  // Solo ejecutar si la comparación entre ambientes está habilitada y hay URL de comparación
+  // Only run if environment comparison is enabled and there's a comparison URL
   if (enableEnvComparison && compareEnvUrl) {
     if (envComparisonMode === 'create-base') {
-      // Modo: Crear snapshots de referencia desde el ambiente base
-      describe('Crear Snapshots de Referencia desde Ambiente Base', () => {
+      // Mode: Create reference snapshots from base environment
+      describe('Create Reference Snapshots from Base Environment', () => {
         urls.forEach(({ path, name, description }) => {
           viewports.forEach(({ name: viewportName, width, height, device }) => {
-            it(`debe crear snapshot base de ${name} en ${viewportName}`, () => {
+            it(`should create base snapshot of ${name} on ${viewportName}`, () => {
               cy.viewport(width, height);
               
               const snapshotBaseName = `${name}-${viewportName}-env-base`.replace(/\s+/g, '-').toLowerCase();
@@ -380,39 +380,39 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
         });
       });
     } else {
-      // Modo: Comparar ambiente de comparación contra snapshots base
-      describe('Comparar Ambiente contra Snapshots Base', () => {
+      // Mode: Compare comparison environment against base snapshots
+      describe('Compare Environment against Base Snapshots', () => {
         urls.forEach(({ path, name, description }) => {
           viewports.forEach(({ name: viewportName, width, height, device }) => {
-            it(`debe comparar ${name} del ambiente ${compareEnvUrl} contra base en ${viewportName}`, () => {
+            it(`should compare ${name} from environment ${compareEnvUrl} against base on ${viewportName}`, () => {
               cy.viewport(width, height);
               
               const snapshotBaseName = `${name}-${viewportName}-env-base`.replace(/\s+/g, '-').toLowerCase();
               
-              cy.log(`📸 Comparando ambiente: ${compareEnvUrl}${path}`);
-              cy.log(`   📸 Snapshot de referencia: ${snapshotBaseName}`);
+              cy.log(`📸 Comparing environment: ${compareEnvUrl}${path}`);
+              cy.log(`   📸 Reference snapshot: ${snapshotBaseName}`);
               visitFullUrl(compareEnvUrl, path);
               cy.get('body').should('be.visible', { timeout: 30000 });
               
               cy.get('body').then(($body) => {
                 if (isErrorPage($body)) {
-                  cy.log(`⚠️ ${name} (${path}) no encontrada en ambiente de comparación, omitiendo`);
+                  cy.log(`⚠️ ${name} (${path}) not found in comparison environment, skipping`);
                   return;
                 }
 
                 waitForPageLoad();
                 
-                // Comparar contra el snapshot base
-                // Nota: El snapshot base debe existir (creado previamente con modo 'create-base')
+                // Compare against base snapshot
+                // Note: Base snapshot must exist (created previously with 'create-base' mode)
                 cy.matchImageSnapshot(snapshotBaseName, {
                   threshold: 0.2,
                   thresholdType: 'percent',
                   capture: 'fullPage'
                 });
 
-                cy.log(`✅ Comparación completada para ${name} en ${viewportName}`);
-                cy.log(`   📍 Ambiente base: ${baseEnvUrl}`);
-                cy.log(`   📍 Ambiente comparado: ${compareEnvUrl}`);
+                cy.log(`✅ Comparison completed for ${name} on ${viewportName}`);
+                cy.log(`   📍 Base environment: ${baseEnvUrl}`);
+                cy.log(`   📍 Compared environment: ${compareEnvUrl}`);
               });
             });
           });
@@ -420,8 +420,8 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
       });
     }
 
-    // Comparación de elementos específicos entre ambientes
-    describe('Comparación de Elementos Específicos entre Ambientes', () => {
+    // Specific element comparison between environments
+    describe('Specific Element Comparison between Environments', () => {
       beforeEach(() => {
         cy.viewport(1728, 1117); // MacBook Pro 16"
       });
@@ -431,11 +431,11 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
           const viewportConfig = viewports.find(v => v.name === viewportName);
           if (!viewportConfig) return;
 
-          it(`debe comparar header de ${name} entre ambientes en ${viewportName}`, () => {
+          it(`should compare header of ${name} between environments on ${viewportName}`, () => {
             cy.viewport(viewportConfig.width, viewportConfig.height);
             
-            // Visitar ambiente base
-            cy.log(`📸 Capturando header del ambiente base: ${baseEnvUrl}${path}`);
+            // Visit base environment
+            cy.log(`📸 Capturing header from base environment: ${baseEnvUrl}${path}`);
             visitFullUrl(baseEnvUrl, path);
             cy.get('body').should('be.visible', { timeout: 30000 });
             
@@ -446,8 +446,8 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
                 const headerSelectors = 'header, .header, nav, .navbar, [role="banner"]';
                 cy.get(headerSelectors).first().should('be.visible').then(($header) => {
                   if ($header.length > 0) {
-                    // Visitar ambiente de comparación
-                    cy.log(`📸 Comparando header del ambiente: ${compareEnvUrl}${path}`);
+                    // Visit comparison environment
+                    cy.log(`📸 Comparing header from environment: ${compareEnvUrl}${path}`);
                     visitFullUrl(compareEnvUrl, path);
                     cy.get('body').should('be.visible', { timeout: 30000 });
                     
@@ -456,7 +456,7 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
                         waitForPageLoad();
                         
                         cy.get(headerSelectors).first().should('be.visible').then(() => {
-                          // Comparar header entre ambientes
+                          // Compare header between environments
                           cy.get(headerSelectors).first().matchImageSnapshot(`${name}-header-${viewportName.toLowerCase()}-env-comparison`, {
                             threshold: 0.2,
                             thresholdType: 'percent'
@@ -475,14 +475,14 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
       });
     });
   } else {
-    it('Comparación entre ambientes deshabilitada', () => {
-      cy.log('ℹ️ La comparación entre ambientes está deshabilitada.');
-      cy.log('   Para habilitarla, configura las variables de entorno:');
-      cy.log('   - COMPARE_ENV_URL: URL del ambiente a comparar');
+    it('Environment comparison disabled', () => {
+      cy.log('ℹ️ Environment comparison is disabled.');
+      cy.log('   To enable it, configure the environment variables:');
+      cy.log('   - COMPARE_ENV_URL: URL of the environment to compare');
       cy.log('   - ENABLE_ENV_COMPARISON: true');
-      cy.log(`   Ambiente base actual: ${baseEnvUrl}`);
+      cy.log(`   Current base environment: ${baseEnvUrl}`);
       if (!compareEnvUrl) {
-        cy.log('   ⚠️ COMPARE_ENV_URL no está configurada');
+        cy.log('   ⚠️ COMPARE_ENV_URL is not configured');
       }
     });
   }
