@@ -37,39 +37,45 @@ jobs:
           echo "📦 Installing dependencies..."
           echo "📋 Node version: $(node --version)"
           echo "📋 npm version: $(npm --version)"
-          echo "📋 Checking package.json and package-lock.json..."
+          echo "📋 Checking package files..."
           ls -la package.json package-lock.json || echo "⚠️ Some package files missing"
           
-          echo "🔄 Attempting npm ci..."
-          if npm ci --legacy-peer-deps 2>&1; then
-            echo "✅ Dependencies installed successfully with npm ci"
-          else
-            EXIT_CODE=$?
-            echo "⚠️ npm ci failed with exit code $EXIT_CODE"
-            echo "🔄 Trying npm install as fallback..."
-            npm install --legacy-peer-deps
-            echo "✅ Dependencies installed with npm install"
+          # Clean install to avoid conflicts
+          echo "🧹 Cleaning node_modules and package-lock if needed..."
+          rm -rf node_modules
+          
+          echo "🔄 Installing dependencies with npm install (using --legacy-peer-deps for compatibility)..."
+          npm install --legacy-peer-deps --no-audit --no-fund
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ npm install failed"
+            echo "📋 Attempting to see what went wrong..."
+            npm install --legacy-peer-deps --no-audit --no-fund --verbose 2>&1 | tail -50
+            exit 1
           fi
+          
+          echo "✅ Dependencies installed successfully"
           
           # Verify critical dependencies are installed
           echo "🔍 Verifying critical dependencies..."
           MISSING_DEPS=0
+          
           if [ ! -d "node_modules/cypress" ]; then
             echo "❌ Cypress not found in node_modules"
             MISSING_DEPS=1
           else
-            echo "✅ Cypress found"
+            echo "✅ Cypress found: $(node_modules/.bin/cypress --version 2>/dev/null || echo 'version check failed')"
           fi
           
           if [ ! -d "node_modules/mochawesome" ]; then
-            echo "⚠️ mochawesome not found"
+            echo "❌ mochawesome not found"
             MISSING_DEPS=1
           else
             echo "✅ mochawesome found"
           fi
           
           if [ ! -d "node_modules/mochawesome-merge" ]; then
-            echo "⚠️ mochawesome-merge not found"
+            echo "❌ mochawesome-merge not found"
             MISSING_DEPS=1
           else
             echo "✅ mochawesome-merge found"
@@ -77,6 +83,8 @@ jobs:
           
           if [ $MISSING_DEPS -eq 1 ]; then
             echo "❌ Some critical dependencies are missing"
+            echo "📋 Listing node_modules contents..."
+            ls -la node_modules/ | head -20
             exit 1
           fi
           
