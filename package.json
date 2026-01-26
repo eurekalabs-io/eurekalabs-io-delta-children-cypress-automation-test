@@ -29,7 +29,7 @@
     "cypress-image-diff": "^2.0.0",
     "cypress-xpath": "^2.0.1",
     "mochawesome": "^7.1.4",
-    "mochawesome-merge": "^5.0.0",
+    "mochawesome-merge": "^4.4.1",
     "mochawesome-report-generator": "^6.3.2"
   },
   "dependencies": {

@@ -33,11 +33,11 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       
       - name: Install report dependencies
         run: |
-          npm install --save-dev mochawesome mochawesome-merge mochawesome-report-generator
+          npm install --save-dev mochawesome mochawesome-merge mochawesome-report-generator --legacy-peer-deps
       
       - name: Check if recording is enabled
         id: check-recording
