@@ -35,25 +35,52 @@ jobs:
       - name: Install dependencies
         run: |
           echo "📦 Installing dependencies..."
-          set -e
-          if npm ci --legacy-peer-deps; then
-            echo "✅ Dependencies installed with npm ci"
+          echo "📋 Node version: $(node --version)"
+          echo "📋 npm version: $(npm --version)"
+          echo "📋 Checking package.json and package-lock.json..."
+          ls -la package.json package-lock.json || echo "⚠️ Some package files missing"
+          
+          echo "🔄 Attempting npm ci..."
+          if npm ci --legacy-peer-deps 2>&1; then
+            echo "✅ Dependencies installed successfully with npm ci"
           else
-            echo "⚠️ npm ci failed, trying npm install instead..."
+            EXIT_CODE=$?
+            echo "⚠️ npm ci failed with exit code $EXIT_CODE"
+            echo "🔄 Trying npm install as fallback..."
             npm install --legacy-peer-deps
             echo "✅ Dependencies installed with npm install"
           fi
           
           # Verify critical dependencies are installed
           echo "🔍 Verifying critical dependencies..."
+          MISSING_DEPS=0
           if [ ! -d "node_modules/cypress" ]; then
             echo "❌ Cypress not found in node_modules"
+            MISSING_DEPS=1
+          else
+            echo "✅ Cypress found"
+          fi
+          
+          if [ ! -d "node_modules/mochawesome" ]; then
+            echo "⚠️ mochawesome not found"
+            MISSING_DEPS=1
+          else
+            echo "✅ mochawesome found"
+          fi
+          
+          if [ ! -d "node_modules/mochawesome-merge" ]; then
+            echo "⚠️ mochawesome-merge not found"
+            MISSING_DEPS=1
+          else
+            echo "✅ mochawesome-merge found"
+          fi
+          
+          if [ $MISSING_DEPS -eq 1 ]; then
+            echo "❌ Some critical dependencies are missing"
             exit 1
           fi
-          if [ ! -d "node_modules/mochawesome" ]; then
-            echo "⚠️ mochawesome not found, will install in next step"
-          fi
-          echo "✅ Dependency verification completed"
+          
+          echo "✅ All critical dependencies verified"
       
       - name: Check if recording is enabled
         id: check-recording
