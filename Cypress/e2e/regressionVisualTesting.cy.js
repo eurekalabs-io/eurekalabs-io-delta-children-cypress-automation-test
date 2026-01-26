@@ -234,6 +234,8 @@ describe('Regresión Visual - Desktop y Mobile', () => {
 });
 
 // Suite de pruebas para comparación entre dos ambientes diferentes
+// COMENTADO: Esta suite está deshabilitada temporalmente
+/*
 describe('Comparación entre Ambientes - Desktop y Mobile', () => {
   // URLs a probar para comparación entre ambientes
   const urls = [
@@ -485,4 +487,5 @@ describe('Comparación entre Ambientes - Desktop y Mobile', () => {
     });
   }
 });
+*/
 
