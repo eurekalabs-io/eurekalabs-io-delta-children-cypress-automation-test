@@ -16,13 +16,14 @@ module.exports = defineConfig({
     reporterOptions: {
       reportDir: 'Cypress/reports',
       overwrite: false,
-      html: true,
+      html: false,  // Solo generar JSON, el HTML se genera después
       json: true,
       timestamp: 'mmddyyyy_HHMMss',
       reportFilename: '[name]-report',
       charts: true,
       code: false,
-      inline: true
+      inline: true,
+      saveJson: true  // Asegurar que se guarden los archivos JSON
     },
     setupNodeEvents(on, config) {
       // Add accessibility tasks

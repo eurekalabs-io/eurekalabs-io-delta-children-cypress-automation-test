@@ -133,6 +133,60 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Verify Cypress execution and reports
+        if: always()
+        run: |
+          echo "🔍 Verifying Cypress execution..."
+          
+          # Check which step ran
+          if [ "${{ steps.check-recording.outputs.recording_enabled }}" == "false" ]; then
+            CYPRESS_OUTCOME="${{ steps.cypress-run-no-recording.outcome }}"
+            echo "📋 Cypress run (without recording) outcome: $CYPRESS_OUTCOME"
+          else
+            CYPRESS_OUTCOME="${{ steps.cypress-run-recording.outcome }}"
+            echo "📋 Cypress run (with recording) outcome: $CYPRESS_OUTCOME"
+          fi
+          
+          echo "📁 Checking for report files immediately after Cypress run..."
+          echo "📂 Current directory: $(pwd)"
+          echo "📂 Listing root directory:"
+          ls -la | head -20
+          
+          echo "📂 Checking Cypress directory:"
+          if [ -d "Cypress" ]; then
+            ls -la Cypress/ | head -20
+          else
+            echo "⚠️ Cypress directory not found"
+          fi
+          
+          echo "📂 Checking Cypress/reports directory:"
+          if [ -d "Cypress/reports" ]; then
+            echo "✅ Cypress/reports exists"
+            find Cypress/reports -type f | head -20
+            echo "📊 JSON files in reports:"
+            find Cypress/reports -name "*.json" -type f
+            echo "📊 Total JSON files: $(find Cypress/reports -name "*.json" -type f 2>/dev/null | wc -l)"
+          else
+            echo "⚠️ Cypress/reports directory does not exist"
+            echo "📂 Creating directory structure..."
+            mkdir -p Cypress/reports
+          fi
+          
+          # Check for any mochawesome files anywhere
+          echo "🔍 Searching for mochawesome files in entire workspace:"
+          find . -name "*mochawesome*" -type f 2>/dev/null | head -20 || echo "No mochawesome files found"
+          
+          # Check for Cypress results in default location
+          echo "🔍 Checking for Cypress results in default locations:"
+          if [ -d "cypress/results" ]; then
+            echo "✅ Found cypress/results"
+            ls -la cypress/results/
+          fi
+          if [ -d "cypress/reports" ]; then
+            echo "✅ Found cypress/reports"
+            ls -la cypress/reports/
+          fi
+      
       - name: Set Cypress result
         id: cypress-result
         if: always()
