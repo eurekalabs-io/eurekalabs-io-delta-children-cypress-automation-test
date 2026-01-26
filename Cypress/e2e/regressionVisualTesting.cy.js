@@ -219,13 +219,13 @@ describe('Visual Regression - Desktop and Mobile', () => {
                   thresholdType: 'percent'
                 });
                 
-                cy.log(`✅ Comparación de header completada para ${name} en Mobile`);
+                cy.log(`✅ Header comparison completed for ${name} on Mobile`);
               } else {
-                cy.log(`⚠️ Header no encontrado para ${name}, omitiendo comparación`);
+                cy.log(`⚠️ Header not found for ${name}, skipping comparison`);
               }
             });
           } else {
-            cy.log(`⚠️ ${name} (${path}) es una página de error, omitiendo prueba`);
+            cy.log(`⚠️ ${name} (${path}) is an error page, skipping test`);
           }
         });
       });
@@ -242,7 +242,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
     {
       path: '/',
       name: 'Homepage',
-      description: 'Página principal'
+      description: 'Homepage'
     },
     {
       path: '/collections/cribs',
@@ -353,27 +353,27 @@ describe('Environment Comparison - Desktop and Mobile', () => {
               
               const snapshotBaseName = `${name}-${viewportName}-env-base`.replace(/\s+/g, '-').toLowerCase();
               
-              cy.log(`📸 Creando snapshot de referencia desde: ${baseEnvUrl}${path}`);
+              cy.log(`📸 Creating reference snapshot from: ${baseEnvUrl}${path}`);
               visitFullUrl(baseEnvUrl, path);
               cy.get('body').should('be.visible', { timeout: 30000 });
               
               cy.get('body').then(($body) => {
                 if (isErrorPage($body)) {
-                  cy.log(`⚠️ ${name} (${path}) no encontrada en ambiente base, omitiendo`);
+                  cy.log(`⚠️ ${name} (${path}) not found in base environment, skipping`);
                   return;
                 }
 
                 waitForPageLoad();
                 
-                // Crear snapshot de referencia del ambiente base
+                // Create reference snapshot from base environment
                 cy.matchImageSnapshot(snapshotBaseName, {
                   threshold: 0.2,
                   thresholdType: 'percent',
                   capture: 'fullPage'
                 });
 
-                cy.log(`✅ Snapshot base creado: ${snapshotBaseName}`);
-                cy.log(`   📍 Ambiente: ${baseEnvUrl}`);
+                cy.log(`✅ Base snapshot created: ${snapshotBaseName}`);
+                cy.log(`   📍 Environment: ${baseEnvUrl}`);
               });
             });
           });
@@ -462,7 +462,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
                             thresholdType: 'percent'
                           });
                           
-                          cy.log(`✅ Comparación de header entre ambientes completada para ${name} en ${viewportName}`);
+                          cy.log(`✅ Header comparison between environments completed for ${name} on ${viewportName}`);
                         });
                       }
                     });
