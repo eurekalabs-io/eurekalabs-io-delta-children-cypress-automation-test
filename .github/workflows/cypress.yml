@@ -108,6 +108,7 @@ jobs:
           wait-on: 'https://www.deltachildren.com/'
           wait-on-timeout: 120
           browser: chrome
+          config-file: cypress.config.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
@@ -124,6 +125,7 @@ jobs:
           parallel: true
           group: 'Delta Children Tests'
           ci-build-id: ${{ github.run_id }}
+          config-file: cypress.config.js
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
