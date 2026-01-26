@@ -1614,8 +1614,84 @@ async function main() {
   
   const results = parseCypressResults();
   
+  // Always try to send a notification, even if no results found
   if (!results) {
     console.error('❌ No results found! Check if report files exist.');
+    console.log('📁 Checking for report directories...');
+    
+    const possibleDirs = [
+      path.join(__dirname, '..', 'Cypress', 'reports'),
+      path.join(__dirname, '..', 'Cypress', 'results'),
+      path.join(__dirname, '..', 'cypress', 'reports'),
+      path.join(__dirname, '..', 'cypress', 'results')
+    ];
+    
+    possibleDirs.forEach(dir => {
+      if (fs.existsSync(dir)) {
+        console.log(`   ✅ Directory exists: ${dir}`);
+        try {
+          const files = fs.readdirSync(dir);
+          console.log(`   📄 Files in directory: ${files.length}`);
+          if (files.length > 0) {
+            console.log(`   📄 First 5 files: ${files.slice(0, 5).join(', ')}`);
+          }
+        } catch (e) {
+          console.log(`   ⚠️ Cannot read directory: ${e.message}`);
+        }
+      } else {
+        console.log(`   ❌ Directory does not exist: ${dir}`);
+      }
+    });
+    
+    // Still send a notification to Slack about the issue
+    if (SLACK_WEBHOOK_URL) {
+      console.log('📤 Sending error notification to Slack...');
+      const errorMessage = {
+        username: 'Cypress Test Bot',
+        icon_emoji: ':warning:',
+        attachments: [{
+          color: colors.warning,
+          title: '⚠️ Test Execution - No Results Found',
+          text: 'No test results were found. This could indicate:\n• Tests did not run\n• Report generation failed\n• Report files are in an unexpected location',
+          fields: [
+            {
+              title: 'Repository',
+              value: GITHUB_REPOSITORY,
+              short: true
+            },
+            {
+              title: 'Workflow',
+              value: GITHUB_WORKFLOW,
+              short: true
+            },
+            {
+              title: 'Branch',
+              value: GITHUB_REF.replace('refs/heads/', ''),
+              short: true
+            },
+            {
+              title: 'Commit',
+              value: `<https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}|${GITHUB_SHA.substring(0, 7)}>`,
+              short: true
+            }
+          ],
+          footer: `Triggered by ${GITHUB_ACTOR}`,
+          footer_icon: 'https://github.githubassets.com/favicons/favicon.png',
+          ts: Math.floor(Date.now() / 1000)
+        }]
+      };
+      
+      try {
+        await sendToSlack(errorMessage);
+        console.log('✅ Error notification sent to Slack');
+      } catch (error) {
+        console.error('❌ Failed to send error notification to Slack:', error.message);
+        process.exit(1);
+      }
+    } else {
+      console.warn('⚠️  SLACK_WEBHOOK_URL not set. Skipping Slack notification.');
+    }
+    
     return;
   }
   
@@ -1650,12 +1726,15 @@ async function main() {
     
     try {
       await sendToSlack(message);
+      console.log('✅ Successfully sent notification to Slack');
     } catch (error) {
-      console.error('Failed to send Slack notification:', error.message);
+      console.error('❌ Failed to send Slack notification:', error.message);
+      console.error('Error details:', error);
       process.exit(1);
     }
   } else {
     console.warn('⚠️  SLACK_WEBHOOK_URL not set. Skipping Slack notification.');
+    console.warn('   Make sure SLACK_WEBHOOK_URL is configured in GitHub Secrets');
   }
 }
 

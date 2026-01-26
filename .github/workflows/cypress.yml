@@ -123,10 +123,27 @@ jobs:
       
       - name: Generate HTML test report
         if: always()
+        id: generate-report
         env:
           GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
         run: |
-          node scripts/generate-report.js || echo "Report generation failed, but continuing..."
+          echo "📊 Generating test report..."
+          node scripts/generate-report.js
+          if [ $? -eq 0 ]; then
+            echo "✅ Report generation completed"
+            echo "report_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Report generation failed, but continuing..."
+            echo "report_generated=false" >> $GITHUB_OUTPUT
+          fi
+          # Verify merged JSON file exists
+          if [ -f "Cypress/reports/merged/mochawesome-merged.json" ]; then
+            echo "✅ Merged JSON file exists"
+            echo "merged_json_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Merged JSON file not found"
+            echo "merged_json_exists=false" >> $GITHUB_OUTPUT
+          fi
       
       - name: Upload test report
         if: always()
@@ -159,7 +176,18 @@ jobs:
           CYPRESS_RESULT: ${{ steps.cypress-result.outputs.result }}
           CYPRESS_STATUS: ${{ steps.cypress-result.outputs.status }}
         run: |
-          node scripts/slack-notifier.js || echo "Slack notification failed, but continuing..."
+          echo "📤 Preparing to send Slack notification..."
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "⚠️ SLACK_WEBHOOK_URL is not set. Skipping Slack notification."
+            exit 0
+          fi
+          echo "✅ SLACK_WEBHOOK_URL is configured"
+          node scripts/slack-notifier.js
+          if [ $? -ne 0 ]; then
+            echo "❌ Slack notification failed with exit code $?"
+            exit 1
+          fi
+          echo "✅ Slack notification sent successfully"
 
 
 
