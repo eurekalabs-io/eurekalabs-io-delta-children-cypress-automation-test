@@ -172,6 +172,22 @@ jobs:
           path: Cypress/videos
           retention-days: 7
       
+      - name: Check for report files before generation
+        if: always()
+        run: |
+          echo "🔍 Checking for Cypress report files..."
+          echo "📁 Checking Cypress/reports directory..."
+          if [ -d "Cypress/reports" ]; then
+            echo "✅ Cypress/reports directory exists"
+            find Cypress/reports -name "*.json" -type f | head -10
+            echo "📊 Total JSON files found: $(find Cypress/reports -name "*.json" -type f | wc -l)"
+          else
+            echo "⚠️ Cypress/reports directory does not exist"
+          fi
+          
+          echo "📁 Checking for mochawesome files..."
+          find . -name "*mochawesome*.json" -type f 2>/dev/null | head -10 || echo "No mochawesome files found"
+      
       - name: Generate HTML test report
         if: always()
         id: generate-report
@@ -179,20 +195,43 @@ jobs:
           GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
         run: |
           echo "📊 Generating test report..."
+          echo "📋 Current directory: $(pwd)"
+          echo "📋 Node version: $(node --version)"
+          
+          # Check if report files exist before generating
+          REPORT_COUNT=$(find Cypress/reports -name "*mochawesome*.json" -type f 2>/dev/null | wc -l || echo "0")
+          echo "📊 Found $REPORT_COUNT report file(s)"
+          
+          if [ "$REPORT_COUNT" -eq "0" ]; then
+            echo "⚠️ No report files found. Tests may not have generated reports."
+            echo "📁 Listing Cypress directory structure..."
+            ls -la Cypress/ || echo "Cypress directory not found"
+            ls -la Cypress/reports/ 2>/dev/null || echo "Cypress/reports directory not found"
+            echo "report_generated=false" >> $GITHUB_OUTPUT
+            echo "merged_json_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           node scripts/generate-report.js
-          if [ $? -eq 0 ]; then
+          REPORT_EXIT_CODE=$?
+          
+          if [ $REPORT_EXIT_CODE -eq 0 ]; then
             echo "✅ Report generation completed"
             echo "report_generated=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ Report generation failed, but continuing..."
+            echo "⚠️ Report generation failed with exit code $REPORT_EXIT_CODE"
             echo "report_generated=false" >> $GITHUB_OUTPUT
           fi
+          
           # Verify merged JSON file exists
           if [ -f "Cypress/reports/merged/mochawesome-merged.json" ]; then
             echo "✅ Merged JSON file exists"
+            echo "📊 File size: $(du -h Cypress/reports/merged/mochawesome-merged.json | cut -f1)"
             echo "merged_json_exists=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ Merged JSON file not found"
+            echo "⚠️ Merged JSON file not found at Cypress/reports/merged/mochawesome-merged.json"
+            echo "📁 Checking merged directory..."
+            ls -la Cypress/reports/merged/ 2>/dev/null || echo "merged directory does not exist"
             echo "merged_json_exists=false" >> $GITHUB_OUTPUT
           fi
       
@@ -228,14 +267,31 @@ jobs:
           CYPRESS_STATUS: ${{ steps.cypress-result.outputs.status }}
         run: |
           echo "📤 Preparing to send Slack notification..."
+          echo "📋 Report generation status: ${{ steps.generate-report.outputs.report_generated }}"
+          echo "📋 Merged JSON exists: ${{ steps.generate-report.outputs.merged_json_exists }}"
+          
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "⚠️ SLACK_WEBHOOK_URL is not set. Skipping Slack notification."
+            echo "💡 Make sure SLACK_WEBHOOK_URL is configured in GitHub Secrets"
             exit 0
           fi
           echo "✅ SLACK_WEBHOOK_URL is configured"
+          
+          # Verify report file exists before sending
+          if [ -f "Cypress/reports/merged/mochawesome-merged.json" ]; then
+            echo "✅ Found merged report file, sending to Slack..."
+          else
+            echo "⚠️ Merged report file not found, but will attempt to send notification anyway..."
+            echo "📁 Checking for alternative report locations..."
+            find . -name "*mochawesome*.json" -type f 2>/dev/null | head -5
+          fi
+          
           node scripts/slack-notifier.js
-          if [ $? -ne 0 ]; then
-            echo "❌ Slack notification failed with exit code $?"
+          SLACK_EXIT_CODE=$?
+          
+          if [ $SLACK_EXIT_CODE -ne 0 ]; then
+            echo "❌ Slack notification failed with exit code $SLACK_EXIT_CODE"
+            echo "📋 Checking script output above for details"
             exit 1
           fi
           echo "✅ Slack notification sent successfully"
