@@ -103,32 +103,72 @@ jobs:
       - name: Cypress run (without recording)
         id: cypress-run-no-recording
         if: steps.check-recording.outputs.recording_enabled == 'false'
-        uses: cypress-io/github-action@v6
+        run: |
+          echo "🚀 Running Cypress tests..."
+          echo "📋 Cypress version: $(npx cypress --version || echo 'version check failed')"
+          echo "📋 Current directory: $(pwd)"
+          echo "📋 Checking cypress.config.js exists:"
+          ls -la cypress.config.js || echo "⚠️ cypress.config.js not found"
+          
+          # Asegurar que el directorio de reportes existe
+          mkdir -p Cypress/reports
+          
+          # Ejecutar Cypress directamente para asegurar que use la configuración correcta
+          npx cypress run --browser chrome --config-file cypress.config.js || CYPRESS_EXIT=$?
+          
+          echo "📊 Cypress execution completed with exit code: ${CYPRESS_EXIT:-0}"
+          
+          # Verificar reportes inmediatamente después
+          echo "🔍 Checking for reports after execution:"
+          find Cypress/reports -name "*.json" -type f 2>/dev/null || echo "No JSON files found"
+          find . -name "*mochawesome*.json" -type f 2>/dev/null | head -10 || echo "No mochawesome files found"
+          
+          # No fallar si Cypress falla, pero registrar el resultado
+          if [ -n "$CYPRESS_EXIT" ] && [ "$CYPRESS_EXIT" -ne 0 ]; then
+            echo "cypress_exit_code=$CYPRESS_EXIT" >> $GITHUB_OUTPUT
+            echo "cypress_outcome=failure" >> $GITHUB_OUTPUT
+          else
+            echo "cypress_exit_code=0" >> $GITHUB_OUTPUT
+            echo "cypress_outcome=success" >> $GITHUB_OUTPUT
+          fi
         continue-on-error: true
-        with:
-          wait-on: 'https://www.deltachildren.com/'
-          wait-on-timeout: 120
-          browser: chrome
-          config-file: cypress.config.js
-          install: false  # No instalar dependencias, ya están instaladas
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Cypress run (with recording)
         id: cypress-run-recording
         if: steps.check-recording.outputs.recording_enabled == 'true'
-        uses: cypress-io/github-action@v6
+        run: |
+          echo "🚀 Running Cypress tests with recording..."
+          echo "📋 Cypress version: $(npx cypress --version || echo 'version check failed')"
+          
+          # Asegurar que el directorio de reportes existe
+          mkdir -p Cypress/reports
+          
+          # Ejecutar Cypress con recording
+          npx cypress run \
+            --browser chrome \
+            --config-file cypress.config.js \
+            --record \
+            --parallel \
+            --group "Delta Children Tests" \
+            --ci-build-id ${{ github.run_id }} || CYPRESS_EXIT=$?
+          
+          echo "📊 Cypress execution completed with exit code: ${CYPRESS_EXIT:-0}"
+          
+          # Verificar reportes inmediatamente después
+          echo "🔍 Checking for reports after execution:"
+          find Cypress/reports -name "*.json" -type f 2>/dev/null || echo "No JSON files found"
+          
+          # No fallar si Cypress falla, pero registrar el resultado
+          if [ -n "$CYPRESS_EXIT" ] && [ "$CYPRESS_EXIT" -ne 0 ]; then
+            echo "cypress_exit_code=$CYPRESS_EXIT" >> $GITHUB_OUTPUT
+            echo "cypress_outcome=failure" >> $GITHUB_OUTPUT
+          else
+            echo "cypress_exit_code=0" >> $GITHUB_OUTPUT
+            echo "cypress_outcome=success" >> $GITHUB_OUTPUT
+          fi
         continue-on-error: true
-        with:
-          wait-on: 'https://www.deltachildren.com/'
-          wait-on-timeout: 120
-          browser: chrome
-          record: true
-          parallel: true
-          group: 'Delta Children Tests'
-          ci-build-id: ${{ github.run_id }}
-          config-file: cypress.config.js
-          install: false  # No instalar dependencias, ya están instaladas
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -193,12 +233,17 @@ jobs:
         run: |
           # Check which step ran and get its outcome
           if [ "${{ steps.check-recording.outputs.recording_enabled }}" == "false" ]; then
-            CYPRESS_OUTCOME="${{ steps.cypress-run-no-recording.outcome }}"
+            CYPRESS_OUTCOME="${{ steps.cypress-run-no-recording.outputs.cypress_outcome }}"
+            CYPRESS_EXIT="${{ steps.cypress-run-no-recording.outputs.cypress_exit_code }}"
           else
-            CYPRESS_OUTCOME="${{ steps.cypress-run-recording.outcome }}"
+            CYPRESS_OUTCOME="${{ steps.cypress-run-recording.outputs.cypress_outcome }}"
+            CYPRESS_EXIT="${{ steps.cypress-run-recording.outputs.cypress_exit_code }}"
           fi
           
-          if [ "$CYPRESS_OUTCOME" == "success" ]; then
+          echo "📋 Cypress outcome: $CYPRESS_OUTCOME"
+          echo "📋 Cypress exit code: $CYPRESS_EXIT"
+          
+          if [ "$CYPRESS_OUTCOME" == "success" ] || [ "$CYPRESS_EXIT" == "0" ]; then
             echo "status=success" >> $GITHUB_OUTPUT
             echo "result=PASSED" >> $GITHUB_OUTPUT
           else
