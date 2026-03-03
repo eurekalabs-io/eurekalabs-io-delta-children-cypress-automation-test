@@ -227,18 +227,23 @@ Cypress.Commands.add('checkAccessibilityAndDocument', (options = {}) => {
 });
 
 // Command to click on cookie banner if it appears
+// Validates banner by selector #shopify-pc__banner, then clicks accept button .hopify-pc__banner__btn-accept
 Cypress.Commands.add('acceptCookieBannerIfPresent', () => {
+  const bannerSelector = '#shopify-pc__banner';
+  const acceptBtnSelector = '#shopify-pc__banner .hopify-pc__banner__btn-accept, #shopify-pc__banner__btn-accept';
+
   cy.get('body').then(($body) => {
-    // Check if the element exists and is visible
-    const cookieBanner = $body.find('#shopify-pc__banner__btn-accept');
-    if (cookieBanner.length > 0 && cookieBanner.is(':visible')) {
-      cy.log('Cookie banner found, clicking accept');
-      cy.get('#shopify-pc__banner__btn-accept', { timeout: 5000 })
+    const $banner = $body.find(bannerSelector);
+    const bannerPresent = $banner.length > 0 && $banner.is(':visible');
+
+    if (bannerPresent) {
+      cy.log('Cookie banner (#shopify-pc__banner) found, clicking accept');
+      cy.get(acceptBtnSelector, { timeout: 5000 })
         .should('be.visible')
         .click({ force: true });
       cy.wait(500); // Wait a moment for the banner to hide
     } else {
-      cy.log('Cookie banner not present or not visible');
+      cy.log('Cookie banner (#shopify-pc__banner) not present or not visible');
     }
   });
 });
