@@ -16,19 +16,19 @@ module.exports = defineConfig({
     reporterOptions: {
       reportDir: 'Cypress/reports',
       overwrite: false,
-      html: false,  // Solo generar JSON, el HTML se genera después
+      html: false,  // JSON only; HTML is generated separately
       json: true,
       timestamp: 'mmddyyyy_HHMMss',
       reportFilename: '[name]-report',
       charts: true,
       code: false,
       inline: true,
-      saveJson: true  // Asegurar que se guarden los archivos JSON
+      saveJson: true  // Persist JSON report files
     },
     setupNodeEvents(on, config) {
       // Add accessibility tasks
       addAccessibilityTasks(on);
-      // Add image diff plugin (solo requiere 'on', no 'config')
+      // Add image diff plugin (only needs 'on', not 'config')
       addMatchImageSnapshotPlugin(on);
       // Reduce memory usage by disabling video
       config.video = false;
@@ -37,7 +37,8 @@ module.exports = defineConfig({
       return config;
     },
     baseUrl: 'https://www.deltachildren.com/',
-    defaultCommandTimeout: 30000, // Aumentar timeout para verificaciones de accesibilidad
+    defaultCommandTimeout: 30000, // Higher timeout for accessibility checks
+    scrollBehavior: false, // Disable auto-scroll on interaction (less page movement in tests)
     chromeWebSecurity: false,
     projectId: 'ds6q9s',
     // Lower memory footprint by reducing concurrency and junk collector pressure
@@ -47,14 +48,14 @@ module.exports = defineConfig({
     retries: { runMode: 2, openMode: 0 },
     env: {
       CYPRESS_INTERNAL_ENV: 'production',
-      // Configuración de ambientes para comparación visual
-      // Ambiente base (por defecto: producción)
+      // Visual comparison environment settings
+      // Base environment (default: production)
       BASE_ENV_URL: process.env.BASE_ENV_URL || 'https://www.deltachildren.com/',
-      // Ambiente a comparar (por defecto: staging o desarrollo)
+      // Environment to compare (default: staging / preview)
       COMPARE_ENV_URL: process.env.COMPARE_ENV_URL || 'https://tyh68bklvgoqhgvq-52269121736.shopifypreview.com/',
-      // Habilitar comparación entre ambientes (habilitado por defecto)
+      // Enable cross-environment comparison (on by default)
       ENABLE_ENV_COMPARISON: process.env.ENABLE_ENV_COMPARISON !== 'false',
-      // Modo de comparación: 'create-base' para crear snapshots base, 'compare' para comparar
+      // Comparison mode: 'create-base' to seed base snapshots, 'compare' to diff against base
       ENV_COMPARISON_MODE: process.env.ENV_COMPARISON_MODE || 'compare'
     },
     // Optimize test execution
