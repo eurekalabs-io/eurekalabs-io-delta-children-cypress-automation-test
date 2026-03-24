@@ -151,7 +151,7 @@ export default class ProductDetailsPage extends BasePage {
           .should('exist')
           .click({force:true})
       } else {
-        cy.log('addToCart button not found, may have already been added to cart');
+        cy.log('AddToCart button not found, may have already been added to cart');
       }
     });
   }
