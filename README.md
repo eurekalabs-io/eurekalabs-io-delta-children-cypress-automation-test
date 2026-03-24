@@ -72,9 +72,9 @@ But in case you want to start from scratch, you can
 
 |         |         |
 | :-----: | :-----: |
-| Node.js | 20.12.2 |
-|   Npm   |  9.0.0  |
-| Cypress | 13.8.1  |
+| Node.js | 22 (LTS) |
+|   Npm   | 10.x (incluido con Node 22) |
+| Cypress | ^15.9.0 |
 
 ### Commands Github to push changes 
 To create the repository, the following commands were used:

@@ -23,6 +23,9 @@
     "url": "https://github.com/PilarTorres89/Delta-Children/issues"
   },
   "homepage": "https://github.com/PilarTorres89/Delta-Children#readme",
+  "engines": {
+    "node": ">=22.0.0 <23"
+  },
   "devDependencies": {
     "cypress": "^15.9.0",
     "cypress-if": "^1.10.5",
