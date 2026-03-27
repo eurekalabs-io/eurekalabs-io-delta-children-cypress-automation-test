@@ -22,7 +22,7 @@ describe('Nursery Sets Collection Suite', () => {
   });
   beforeEach(() => {
     cy.log('Setting up test environment for Nursery Sets Collection');
-    cy.visit("https://deltachildrenstore.myshopify.com/pages/bundles?preview_theme_id=188409086320");
+    cy.visit("https://deltachildrenstore.myshopify.com/pages/bundles");
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
     // cy.waitForCollectionGrid();
