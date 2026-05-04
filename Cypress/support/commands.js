@@ -32,7 +32,11 @@ Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (s
     'ul.swatches__list',
     '.swatches__list',
     '.product__swatches ul',
-    '.product__swatches > ul'
+    '.product__swatches > ul',
+    '.cb-product-list-item .product__item-swatches ul',
+    '.cb-product-list-item ul.swatches__list',
+    '.section-slider .product__item-swatches ul',
+    '.section-slider ul.swatches__list'
   ];
   
   // Recursive function to try selectors sequentially

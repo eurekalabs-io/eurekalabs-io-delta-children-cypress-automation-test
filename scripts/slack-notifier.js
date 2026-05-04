@@ -930,6 +930,8 @@ function extractFilesFromTitles(suites, results = null) {
     'Nursery Sets Collection': 'Nurserysets.cy.js',
     'Nursery Sets': 'Nurserysets.cy.js',
     'Nursery Set': 'Nurserysets.cy.js',
+    'Review All Bundles — PLP swatches y variantes': 'ReviewAllBundles.cy.js',
+    'Review All Bundles': 'ReviewAllBundles.cy.js',
     'Accessibility Suite': 'accessibilityTest.cy.js',
     'Accessibility': 'accessibilityTest.cy.js',
     'Regresión Visual': 'regressionVisualTesting.cy.js',
