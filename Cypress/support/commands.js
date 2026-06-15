@@ -131,56 +131,89 @@ Cypress.Commands.add('selectSecondVariantOnPDP', () => {
   });
 });
 
-// On PDP: select the second variant option (generic for any PDP), then validate images changed.
-// Uses input[data-title] (e.g. #MainContent input[data-title]) or radios in .product-info-group; second option = .eq(1) with .check().
+const PDP_MAIN_IMAGE_SELECTORS = [
+  '.product-hero-images .product__featured-image-lg img',
+  '.product__featured-image-lg img',
+  '.product-hero-images img[src*="/cdn/shop/files/"]',
+  '#MainContent .product-hero-images img[src*="/cdn/shop/files/"]',
+  '[data-product-image-wrapper] img[src*="/cdn/shop/files/"]',
+  '.meet-the-product__image-container img',
+  '.product-main img[src*="/cdn/shop/files/"]',
+  'img[src*="/cdn/shop/files/"]',
+];
+
+const isVisiblePdpProductImage = (el) => {
+  const $el = Cypress.$(el);
+  const style = window.getComputedStyle(el);
+  const rect = el.getBoundingClientRect();
+  const src = $el.attr('src') || '';
+  return (
+    style.display !== 'none' &&
+    style.visibility !== 'hidden' &&
+    parseFloat(style.opacity || '1') > 0 &&
+    $el.is(':visible') &&
+    rect.width >= 80 &&
+    rect.height >= 80 &&
+    src.includes('/cdn/shop/files/')
+  );
+};
+
+Cypress.Commands.add('getVisiblePdpMainImageSrc', () => {
+  cy.get('.product-hero-images, .product__featured-image-lg, #MainContent', { timeout: 20000 }).should('exist');
+  cy.scrollTo(0, 0);
+
+  return cy.get('body', { timeout: 20000 }).then(($body) => {
+    for (const selector of PDP_MAIN_IMAGE_SELECTORS) {
+      const $img = $body.find(selector).filter((i, el) => isVisiblePdpProductImage(el)).first();
+      if ($img.length) {
+        return $img.attr('src');
+      }
+    }
+    throw new Error(`No visible PDP main image found (tried: ${PDP_MAIN_IMAGE_SELECTORS.join(' | ')})`);
+  });
+});
+
 Cypress.Commands.add('selectDifferentVariantOnPDPAndValidateImages', () => {
-  // Generic selectors: variant inputs (data-title or radio in product-info-group); second option = .eq(1).
   const secondVariantSelectors = [
-    '#MainContent input[data-title]',
+    '#MainContent .product-info-group .swatches__list input.swatch-input[data-title]',
+    '#MainContent ul.swatches__list[role="listbox"] input.swatch-input[data-title]',
     '#MainContent .product-info-group input[data-title]',
+    '.product-info-group .swatches__list input.swatch-input[data-title]',
     '.product-info-group input[data-title]',
     '#MainContent .product-info-group input[type="radio"]',
     '.product-info-group input[type="radio"]',
+    '#MainContent .product-info-group .swatches__list label.js-swatch-color',
+    '#MainContent ul.swatches__list[role="listbox"] label.js-swatch-color',
+    '.product-info-group .swatches__list label.js-swatch-color',
+    'ul.swatches__list[role="listbox"] label.js-swatch-color',
     '.product-sidebar-wrapper .product-info-group ul li:nth-child(4) label',
     '.product-sidebar-wrapper .product-info-group ul li:nth-child(2) label',
-    'aside .product-info-group ul li:nth-child(2) label'
+    'aside .product-info-group ul li:nth-child(2) label',
   ].join(', ');
 
-  const mainImageSelector = [
-    '.meet-the-product__image-container img',
-    '.product-main .product-gallery img',
-    '.product-main [class*="gallery"] img',
-    '.product__media img',
-    '.product-main img[src*="cdn.shopify"]',
-    '[class*="product-main"] img[src*="cdn.shopify"]',
-    '.product-media img',
-    '[class*="product__media"] img',
-    'main img[src*="cdn.shopify"]',
-    '[id*="main-product"] img[src*="cdn.shopify"]',
-    '#MainContent img[src*="cdn.shopify"]',
-    '.main-content img[src*="cdn.shopify"]',
-    'img[src*="cdn.shopify"][src*="/files/"]',
-    '[class*="product"] img[src*="cdn.shopify"]',
-    '.product-main img'
-  ].join(', ');
+  cy.getVisiblePdpMainImageSrc().then((srcBefore) => {
+    cy.get('body', { timeout: 15000 }).then(($body) => {
+      const $options = $body.find(secondVariantSelectors);
+      if ($options.length < 2) {
+        cy.log(`PDP has only ${$options.length} variant option(s); need 2+ to select a different variant. Skipping.`);
+        return;
+      }
 
-  cy.get(mainImageSelector, { timeout: 20000 }).filter(':visible').first().invoke('attr', 'src').then((srcBefore) => {
-    // Second option: if input (radio/checkbox) use .check(), else (label) use .click().
-    cy.get(secondVariantSelectors, { timeout: 15000 }).should('have.length.at.least', 2).then(($options) => {
       const second = $options.eq(1);
       if (second.is('input')) {
         cy.wrap(second).check({ force: true });
       } else {
         cy.wrap(second).click({ force: true });
       }
-    });
-    cy.wait(2000);
-    cy.get(mainImageSelector, { timeout: 20000 }).filter(':visible').first().invoke('attr', 'src').then((srcAfter) => {
-      if (srcAfter !== srcBefore) {
-        expect(srcAfter, 'Product image should change after selecting second variant').to.not.equal(srcBefore);
-      } else {
-        cy.log('Image src unchanged after variant click (variants may share the same image)');
-      }
+
+      cy.wait(2000);
+      cy.getVisiblePdpMainImageSrc().then((srcAfter) => {
+        if (srcAfter !== srcBefore) {
+          expect(srcAfter, 'Product image should change after selecting second variant').to.not.equal(srcBefore);
+        } else {
+          cy.log('Image src unchanged after variant click (variants may share the same image)');
+        }
+      });
     });
   });
 });

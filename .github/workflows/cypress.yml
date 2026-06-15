@@ -24,14 +24,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
-          # No usar cache para evitar conflictos con --legacy-peer-deps
-          cache: ''
+          package-manager-cache: false
       
       - name: Install dependencies
         run: |
@@ -279,7 +278,7 @@ jobs:
           fi
       
       - name: Upload Cypress screenshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: cypress-screenshots
@@ -287,7 +286,7 @@ jobs:
           retention-days: 7
       
       - name: Upload accessibility reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: accessibility-reports
@@ -296,7 +295,7 @@ jobs:
           if-no-files-found: ignore
       
       - name: Upload Cypress videos
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: cypress-videos
@@ -368,7 +367,7 @@ jobs:
       
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-report-html
           path: Cypress/reports/merged/test-report.html
@@ -377,7 +376,7 @@ jobs:
       
       - name: Upload test summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-summary
           path: Cypress/reports/merged/test-summary.md

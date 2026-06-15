@@ -5,9 +5,13 @@ import ProductsList from '../page-objects/pages/ProductsList.js';
 const sets = require('../fixtures/NurserySets.json');
 const BUNDLES_URL = 'https://deltachildrenstore.myshopify.com/pages/bundles';
 
-describe('Review All Bundles — PLP swatches y variantes', () => {
+/**
+ * Validates that on the bundle builder product list (PLP slider), each item with multiple
+ * swatches allows selecting another variant and reflects the change (image or swatch UI).
+ */
+describe('Bundle builder PLP — swatch and variant selection per product', () => {
   beforeEach(() => {
-    cy.log('Abriendo landing de bundles y creando un set (Shopify preview)');
+    cy.log('Opening bundles landing page and starting a set (Shopify preview store)');
     cy.visit(BUNDLES_URL);
     cy.acceptCookieBannerIfPresent();
     cy.scrollTo(0, 0);
@@ -22,7 +26,7 @@ describe('Review All Bundles — PLP swatches y variantes', () => {
         const buttons = buttonsByClass.toArray();
         const randomIndex = Math.floor(Math.random() * buttons.length);
         cy.wrap(buttons[randomIndex]).click({ force: true });
-        cy.log(`Botón "Create your set" (${randomIndex + 1} de ${buttons.length})`);
+        cy.log(`"Create your set" button clicked (${randomIndex + 1} of ${buttons.length})`);
         return;
       }
 
@@ -35,12 +39,12 @@ describe('Review All Bundles — PLP swatches y variantes', () => {
         const buttons = $allButtons.toArray();
         const randomIndex = Math.floor(Math.random() * buttons.length);
         cy.wrap(buttons[randomIndex]).click({ force: true });
-        cy.log(`Botón alternativo de set/bundle (${randomIndex + 1} de ${buttons.length})`);
+        cy.log(`Fallback set/bundle button clicked (${randomIndex + 1} of ${buttons.length})`);
       } else {
         cy.wait(2000);
         cy.url().then((url) => {
           if (!url.includes('/products/')) {
-            cy.log('No se encontró botón de creación de set; la página puede cargar con retraso');
+            cy.log('No set-creation button found; page may still be loading');
           }
         });
       }
@@ -52,11 +56,11 @@ describe('Review All Bundles — PLP swatches y variantes', () => {
   });
 
   sets.forEach((data, index) => {
-    it(`debe permitir cambiar variante vía swatches en cada producto de la PLP del bundle — ${data.category} / ${data.subcategory}`, function () {
+    it(`should change variants via swatches for each bundle PLP product — ${data.category} / ${data.subcategory}`, function () {
       this.test.title =
-        `Review All Bundles PLP — ${data.category} / ${data.subcategory}: swatches por producto en la lista`;
+        `Bundle PLP — ${data.category} / ${data.subcategory}: validate swatch selection and variant updates on the builder list`;
 
-      cy.log(`Caso ${index + 1} de ${sets.length}: ${data.category} — ${data.subcategory}`);
+      cy.log(`Fixture ${index + 1} of ${sets.length}: ${data.category} — ${data.subcategory}`);
 
       cy.url({ timeout: 45000 }).should('include', '/products/');
 
