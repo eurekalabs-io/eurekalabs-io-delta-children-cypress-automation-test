@@ -1,3 +1,8 @@
+import {
+  PDP_VARIANT_GROUP_SELECTOR,
+  getSecondSwatchTargetsOnPdp,
+} from './pdpVariantHelpers';
+
 // ***********************************************
 // This example commands.js shows you how to
 // create various custom commands and overwrite
@@ -173,46 +178,46 @@ Cypress.Commands.add('getVisiblePdpMainImageSrc', () => {
   });
 });
 
-Cypress.Commands.add('selectDifferentVariantOnPDPAndValidateImages', () => {
-  const secondVariantSelectors = [
-    '#MainContent .product-info-group .swatches__list input.swatch-input[data-title]',
-    '#MainContent ul.swatches__list[role="listbox"] input.swatch-input[data-title]',
-    '#MainContent .product-info-group input[data-title]',
-    '.product-info-group .swatches__list input.swatch-input[data-title]',
-    '.product-info-group input[data-title]',
-    '#MainContent .product-info-group input[type="radio"]',
-    '.product-info-group input[type="radio"]',
-    '#MainContent .product-info-group .swatches__list label.js-swatch-color',
-    '#MainContent ul.swatches__list[role="listbox"] label.js-swatch-color',
-    '.product-info-group .swatches__list label.js-swatch-color',
-    'ul.swatches__list[role="listbox"] label.js-swatch-color',
-    '.product-sidebar-wrapper .product-info-group ul li:nth-child(4) label',
-    '.product-sidebar-wrapper .product-info-group ul li:nth-child(2) label',
-    'aside .product-info-group ul li:nth-child(2) label',
-  ].join(', ');
+const clickPdpSwatchTarget = ($target) => {
+  if ($target.is('input')) {
+    return cy.wrap($target).check({ force: true });
+  }
+  return cy.wrap($target).click({ force: true });
+};
 
+Cypress.Commands.add('selectDifferentVariantOnPDPAndValidateImages', () => {
   cy.getVisiblePdpMainImageSrc().then((srcBefore) => {
     cy.get('body', { timeout: 15000 }).then(($body) => {
-      const $options = $body.find(secondVariantSelectors);
-      if ($options.length < 2) {
-        cy.log(`PDP has only ${$options.length} variant option(s); need 2+ to select a different variant. Skipping.`);
+      const targets = getSecondSwatchTargetsOnPdp($body);
+      if (!targets.length) {
+        cy.log('PDP has no variant group with 2+ swatches; need 2+ to select a different variant. Skipping.');
         return;
       }
 
-      const second = $options.eq(1);
-      if (second.is('input')) {
-        cy.wrap(second).check({ force: true });
-      } else {
-        cy.wrap(second).click({ force: true });
-      }
+      const groupCount = $body.find(PDP_VARIANT_GROUP_SELECTOR).length;
+      cy.log(
+        groupCount > 1
+          ? `PDP has ${groupCount} variant group(s); selecting the second swatch in ${targets.length} group(s).`
+          : 'Selecting the second swatch on PDP.'
+      );
 
-      cy.wait(2000);
-      cy.getVisiblePdpMainImageSrc().then((srcAfter) => {
-        if (srcAfter !== srcBefore) {
-          expect(srcAfter, 'Product image should change after selecting second variant').to.not.equal(srcBefore);
-        } else {
-          cy.log('Image src unchanged after variant click (variants may share the same image)');
+      let chain = cy.wrap(null);
+      targets.forEach(($target, index) => {
+        chain = chain.then(() => clickPdpSwatchTarget($target));
+        if (index < targets.length - 1) {
+          chain = chain.then(() => cy.wait(500));
         }
+      });
+
+      chain.then(() => {
+        cy.wait(2000);
+        cy.getVisiblePdpMainImageSrc().then((srcAfter) => {
+          if (srcAfter !== srcBefore) {
+            expect(srcAfter, 'Product image should change after selecting second variant').to.not.equal(srcBefore);
+          } else {
+            cy.log('Image src unchanged after variant click (variants may share the same image)');
+          }
+        });
       });
     });
   });

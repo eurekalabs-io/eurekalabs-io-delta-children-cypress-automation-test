@@ -1,5 +1,6 @@
 import BasePage from '../BasePage';
 import 'cypress-xpath';
+import { countPdpSwatchOptions } from '../../support/pdpVariantHelpers';
 
 // Selectors for the Best Sellers section on /collections/cribs
 const BEST_SELLERS = '#best-sellers';
@@ -59,12 +60,6 @@ export default class ProductsListCribsBestSellers extends BasePage {
    * @returns Cypress chainable<boolean>
    */
   static openFirstProductWithPdpVariants(minVariants = 2) {
-    const pdpVariantSelectors = [
-      '#MainContent .product-info-group .swatches__list input.swatch-input[data-title]',
-      '#MainContent ul.swatches__list[role="listbox"] input.swatch-input[data-title]',
-      '#MainContent .product-info-group .swatches__list label.js-swatch-color',
-      '#MainContent ul.swatches__list[role="listbox"] label.js-swatch-color',
-    ].join(', ');
     const productLinks = `${BEST_SELLERS} .crib-mobile-title-section .col-8 a`;
 
     const tryIndex = (index) => {
@@ -89,7 +84,7 @@ export default class ProductsListCribsBestSellers extends BasePage {
             return cy.get('body', { timeout: 15000 });
           })
           .then(($body) => {
-            const variantCount = $body.find(pdpVariantSelectors).length;
+            const variantCount = countPdpSwatchOptions($body);
             if (variantCount >= minVariants) {
               cy.log(`Best-sellers product ${index + 1} has ${variantCount} PDP variant option(s).`);
               return cy.wrap(true);
