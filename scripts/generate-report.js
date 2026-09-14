@@ -41,7 +41,11 @@ function findReportFiles() {
       
       if (stat.isDirectory()) {
         searchDir(fullPath);
-      } else if (item.endsWith('.json') && item.includes('mochawesome')) {
+      } else if (
+        item.endsWith('.json') &&
+        (item.includes('mochawesome') || item.includes('-report')) &&
+        !item.includes('checkout-trace')
+      ) {
         files.push(fullPath);
       }
     });

@@ -925,6 +925,10 @@ function extractFilesFromTitles(suites, results = null) {
     'Kids Sets Collection': 'Kidssets.cy.js',
     'Kids Sets': 'Kidssets.cy.js',
     'Kids Set': 'Kidssets.cy.js',
+    'Nursery Set Checkout Suite': 'NurserySetCheckout.cy.js',
+    'Nursery Set Checkout': 'NurserySetCheckout.cy.js',
+    'Complete-Checkout-Process': 'NurserySetCheckout.cy.js',
+    'Complete order process': 'NurserySetCheckout.cy.js',
     'Nursery Sets Collection Suite': 'Nurserysets.cy.js',
     'Nursery Sets Collection Tests': 'Nurserysets.cy.js',
     'Nursery Sets Collection': 'Nurserysets.cy.js',
@@ -957,8 +961,13 @@ function extractFilesFromTitles(suites, results = null) {
     Object.keys(filePatterns).forEach(pattern => {
       const patternLower = pattern.toLowerCase();
       if (title.includes(patternLower)) {
-        console.log(`   ✅ Found pattern "${pattern}" in suite title: "${suite.title}" -> ${filePatterns[pattern]}`);
-        foundFiles.add(filePatterns[pattern]);
+        const mappedFile = filePatterns[pattern];
+        // Checkout spec titles contain "nursery set" but must not map to Nurserysets.cy.js
+        if (mappedFile === 'Nurserysets.cy.js' && title.includes('checkout')) {
+          return;
+        }
+        console.log(`   ✅ Found pattern "${pattern}" in suite title: "${suite.title}" -> ${mappedFile}`);
+        foundFiles.add(mappedFile);
       }
     });
   });
@@ -973,8 +982,12 @@ function extractFilesFromTitles(suites, results = null) {
         Object.keys(filePatterns).forEach(pattern => {
           const patternLower = pattern.toLowerCase();
           if (title.includes(patternLower)) {
-            console.log(`${indent}✅ Found pattern "${pattern}" in ${level === 0 ? 'top-level' : 'nested'} item: "${item.title || item.fullTitle}" -> ${filePatterns[pattern]}`);
-            foundFiles.add(filePatterns[pattern]);
+            const mappedFile = filePatterns[pattern];
+            if (mappedFile === 'Nurserysets.cy.js' && title.includes('checkout')) {
+              return;
+            }
+            console.log(`${indent}✅ Found pattern "${pattern}" in ${level === 0 ? 'top-level' : 'nested'} item: "${item.title || item.fullTitle}" -> ${mappedFile}`);
+            foundFiles.add(mappedFile);
           }
         });
       }
@@ -1001,8 +1014,12 @@ function extractFilesFromTitles(suites, results = null) {
           Object.keys(filePatterns).forEach(pattern => {
             const patternLower = pattern.toLowerCase();
             if (testTitle.includes(patternLower)) {
-              console.log(`${indent}✅ Found pattern "${pattern}" in test title: "${test.title || test.fullTitle}" -> ${filePatterns[pattern]}`);
-              foundFiles.add(filePatterns[pattern]);
+              const mappedFile = filePatterns[pattern];
+              if (mappedFile === 'Nurserysets.cy.js' && testTitle.includes('checkout')) {
+                return;
+              }
+              console.log(`${indent}✅ Found pattern "${pattern}" in test title: "${test.title || test.fullTitle}" -> ${mappedFile}`);
+              foundFiles.add(mappedFile);
             }
           });
         });

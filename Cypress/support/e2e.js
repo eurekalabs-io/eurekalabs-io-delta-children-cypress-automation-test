@@ -14,7 +14,10 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
+import './cypress-env-shim'
 import './commands'
+// Guest checkout visit + optional Storefront cartCreate (skip Shop Pay).
+import './shopifyCheckout'
 import 'wick-a11y';
 
 // Import cypress-image-diff commands
@@ -45,8 +48,19 @@ if (app && app.document && !app.document.head.querySelector('[data-hide-command-
   app.document.head.appendChild(style);
 }
 
+beforeEach(() => {
+  cy.stubStorefrontNoise();
+});
+
 // Global cleanup to release memory between tests
-afterEach(() => {
+afterEach(function () {
+  // NurserySetCheckout must keep cart/checkout cookies until the next
+  // beforeEach. Clearing here emptied the cart while checkout still ran.
+  if (Cypress.spec.relative.includes('NurserySetCheckout')) {
+    cy.log('Skipping cookie cleanup for NurserySetCheckout');
+    return;
+  }
+
   // Clear cookies/localStorage/sessionStorage for AUT
   cy.clearCookies({ domain: "https://www.deltachildren.com/" });
   cy.clearLocalStorage();
