@@ -44,4 +44,51 @@ export default class CartPage extends BasePage {
       }
     });
   }
+
+  /**
+   * Shopify storefront cart API (same-origin /cart.js).
+   * Source of truth for item_count, line items and totals (prices in cents).
+   */
+  static captureShopifyCart() {
+    return cy.request({ url: '/cart.js' }).then((res) => {
+      const cart = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+      cy.wrap(cart).as('shopifyCart');
+      const titles = (cart.items || []).map((item) => item.product_title || item.title).filter(Boolean);
+      cy.log(`Shopify cart.js — items: ${cart.item_count}, total (cents): ${cart.total_price}, titles: ${titles.join(' | ')}`);
+      return cy.wrap(cart);
+    });
+  }
+
+  static assertShopifyCartHasItems() {
+    this.captureShopifyCart().then((cart) => {
+      expect(cart, 'Shopify /cart.js body').to.be.an('object');
+      expect(cart.item_count, 'cart.item_count').to.be.greaterThan(0);
+      expect(cart.items, 'cart.items').to.be.an('array').and.have.length.greaterThan(0);
+      expect(cart.total_price, 'cart.total_price in cents').to.be.greaterThan(0);
+    });
+  }
+
+  static goToCart() {
+    cy.visit('/cart');
+    cy.acceptCookieBannerIfPresent();
+    cy.get('body', { timeout: 30000 }).should('exist');
+  }
+
+  static assertHasItems() {
+    cy.get('body', { timeout: 30000 }).should(($body) => {
+      const text = $body.text().toLowerCase();
+      const looksEmpty =
+        text.includes('your cart is empty') ||
+        text.includes('cart is currently empty') ||
+        text.includes('your cart is currently empty');
+      expect(looksEmpty, 'Cart should contain the Nursery Set').to.equal(false);
+    });
+  }
+
+  static proceedToCheckout() {
+    // Do not click the cart Checkout button: Shop Pay hijacks it and Cypress
+    // waits forever for window `load`. visitShopifyCheckout uses the cart
+    // cookie (or Storefront checkoutUrl) plus skip_shop_pay=true.
+    cy.visitShopifyCheckout();
+  }
 }

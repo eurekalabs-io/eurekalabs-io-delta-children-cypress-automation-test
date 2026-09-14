@@ -140,6 +140,13 @@ export default class ProductDetailsPage extends BasePage {
     });
   }
 
+  static assertBundleBuilderReady() {
+    cy.url({ timeout: 30000 }).should('include', '/products/');
+    cy.get('.cb-bundle-layout__left', { timeout: 20000 }).should('exist');
+    cy.get('.components-section', { timeout: 30000 }).should('exist').and('be.visible');
+    cy.log('Bundle builder is ready (layout + components section)');
+  }
+
   static bundleAddCart() {
     // First verify if button exists before attempting to click
     cy.get('body').then(($body) => {

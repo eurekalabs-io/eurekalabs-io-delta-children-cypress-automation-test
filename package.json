@@ -27,11 +27,11 @@
     "node": ">=22.0.0 <23"
   },
   "devDependencies": {
-    "cypress": "^15.9.0",
+    "cypress": "^16.0.0",
     "cypress-if": "^1.10.5",
     "cypress-image-diff": "^2.0.0",
     "cypress-xpath": "^2.0.1",
-    "mochawesome": "^7.1.4",
+    "mochawesome": "^8.0.1",
     "mochawesome-merge": "^4.4.1",
     "mochawesome-report-generator": "^6.3.2"
   },
@@ -200,10 +200,10 @@
     "universalify": "^2.0.0",
     "untildify": "^4.0.0",
     "url-parse": "^1.5.10",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.2",
     "verror": "^1.10.0",
     "which": "^2.0.2",
-    "wick-a11y": "^2.0.1",
+    "wick-a11y": "^3.0.2",
     "wrap-ansi": "^7.0.0",
     "wrappy": "^1.0.2",
     "yallist": "^4.0.0",

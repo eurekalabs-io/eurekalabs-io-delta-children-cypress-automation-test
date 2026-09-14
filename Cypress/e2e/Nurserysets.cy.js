@@ -22,52 +22,14 @@ describe('Nursery Sets Collection Suite', () => {
   });
   beforeEach(() => {
     cy.log('Setting up test environment for Nursery Sets Collection');
-    cy.visit("https://www.deltachildren.com/pages/bundles");
+    cy.stubStorefrontNoise();
+    cy.visit('/pages/bundles');
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
     // cy.waitForCollectionGrid();
     cy.scrollTo(0, 0);
     cy.window().then((win) => win.scrollTo(0, 0));
-    
-    // Wait for the page to load completely before searching for buttons
-    cy.get('body', { timeout: 30000 }).should('exist');
-    
-    // Randomly select one of the "create your set" buttons
-    // Search flexibly to avoid timeouts
-    cy.get('body').then(($body) => {
-      // First search by specific class
-      const buttonsByClass = $body.find('a.js-create-set-button, button.js-create-set-button');
-      
-      if (buttonsByClass.length > 0) {
-        const buttons = buttonsByClass.toArray();
-        const randomIndex = Math.floor(Math.random() * buttons.length);
-        const randomButton = buttons[randomIndex];
-        cy.wrap(randomButton).click({ force: true });
-        cy.log(`"Create your set" button randomly selected (${randomIndex + 1} of ${buttons.length})`);
-      } else {
-        // Search by alternative text if not found with class
-        const $allButtons = $body.find('a, button').filter((i, el) => {
-          const text = Cypress.$(el).text().toLowerCase();
-          return text.includes('create') || text.includes('set') || text.includes('bundle');
-        });
-        
-        if ($allButtons.length > 0) {
-          const buttons = $allButtons.toArray();
-          const randomIndex = Math.floor(Math.random() * buttons.length);
-          cy.wrap(buttons[randomIndex]).click({ force: true });
-          cy.log(`"Create your set" button selected by text (${randomIndex + 1} of ${buttons.length})`);
-        } else {
-          // If no button is found, wait a moment and verify the URL
-          // The page may have already redirected or the button may appear later
-          cy.wait(2000);
-          cy.url().then((url) => {
-            if (!url.includes('/products/')) {
-              cy.log('"Create your set" button not found, but page may be loading...');
-            }
-          });
-        }
-      }
-    });
+    cy.openRandomCreateSet();
   });
 
   afterEach(() => {

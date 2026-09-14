@@ -280,9 +280,9 @@ describe('Environment Comparison - Desktop and Mobile', () => {
   ];
 
   // Get environment URLs from environment variables
-  const baseEnvUrl = Cypress.env('BASE_ENV_URL') || Cypress.config('baseUrl');
-  const compareEnvUrl = Cypress.env('COMPARE_ENV_URL');
-  const enableEnvComparison = Cypress.env('ENABLE_ENV_COMPARISON') || false;
+  const baseEnvUrl = Cypress.expose('BASE_ENV_URL') || Cypress.config('baseUrl');
+  const compareEnvUrl = Cypress.expose('COMPARE_ENV_URL');
+  const enableEnvComparison = Cypress.expose('ENABLE_ENV_COMPARISON') || false;
 
   // Helper function to wait for page to load completely
   const waitForPageLoad = () => {
@@ -339,7 +339,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
   };
 
   // Operation mode: 'create-base' to create base snapshots, 'compare' to compare
-  const envComparisonMode = Cypress.env('ENV_COMPARISON_MODE') || 'compare';
+  const envComparisonMode = Cypress.expose('ENV_COMPARISON_MODE') || 'compare';
   
   // Only run if environment comparison is enabled and there's a comparison URL
   if (enableEnvComparison && compareEnvUrl) {

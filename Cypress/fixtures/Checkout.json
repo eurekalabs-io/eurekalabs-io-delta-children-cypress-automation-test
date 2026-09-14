@@ -1,0 +1,13 @@
+{
+  "email": "fbosio@eurekalabs.io",
+  "firstName": "Test",
+  "lastName": "EurekaLabs",
+  "address1": "455 Market Street",
+  "city": "San Francisco",
+  "state": "California",
+  "stateCode": "CA",
+  "zip": "94105",
+  "country": "United States",
+  "phone": "(415) 555-0100",
+  "phoneCountry": "US"
+}

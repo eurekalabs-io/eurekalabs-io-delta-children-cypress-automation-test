@@ -332,6 +332,51 @@ Cypress.Commands.add('checkAccessibilityAndDocument', (options = {}) => {
 // Validates banner by selector #shopify-pc__banner, then clicks accept button.
 // Uses .should('exist') + click({ force: true }) so it works when the banner is covered
 // by the Shopify preview bar iframe (e.g. #PBarNextFrame).
+// Bloomreach / analytics / tags often never finish and block the window `load` event.
+Cypress.Commands.add('stubStorefrontNoise', () => {
+  const patterns = [
+    '**/api/img-dscr/**',
+    '**/api/br-links/**',
+    '**/OneCollector/**',
+    '**/google-analytics.com/**',
+    '**/googletagmanager.com/**',
+    '**/connect.facebook.net/**',
+    '**/facebook.com/tr*',
+    '**/doubleclick.net/**',
+    '**/hotjar.com/**',
+    '**/clarity.ms/**',
+    '**/klck.dev/**',
+    '**/elfsight.com/**',
+    '**/searchanise-ef84.kxcdn.com/**',
+  ];
+  patterns.forEach((pattern) => {
+    cy.intercept(pattern, { statusCode: 204, body: '' });
+  });
+});
+
+// Avoid click-navigation: Cypress waits for `load`, which Shopify often never fires.
+Cypress.Commands.add('openRandomCreateSet', () => {
+  const selector = 'a.js-create-set-button[href*="/products/"]';
+
+  cy.get(selector, { timeout: 45000 })
+    .should('have.length.at.least', 1)
+    .then(($buttons) => {
+      const index = Math.floor(Math.random() * $buttons.length);
+      const el = $buttons[index];
+      const href = el.getAttribute('href') || el.href;
+
+      cy.log(`"Create your set" ${index + 1} of ${$buttons.length} → ${href}`);
+
+      if (!href) {
+        throw new Error('Create your set button has no href');
+      }
+
+      cy.visit(href, { failOnStatusCode: false });
+      cy.url({ timeout: 45000 }).should('include', '/products/');
+      cy.acceptCookieBannerIfPresent();
+    });
+});
+
 Cypress.Commands.add('acceptCookieBannerIfPresent', () => {
   const bannerSelector = '#shopify-pc__banner';
   const acceptBtnSelector = '#shopify-pc__banner .hopify-pc__banner__btn-accept, #shopify-pc__banner__btn-accept';

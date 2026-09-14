@@ -55,6 +55,7 @@ The Slack notification includes:
 - **Duration**: Total test execution time
 - **Branch**: Git branch where tests ran
 - **Commit**: Link to the commit
+- **Test files**: Specs executed, including `NurserySetCheckout.cy.js` (suite **Nursery Set Checkout Suite**)
 - **Failed Tests**: List of failed tests (if any)
 - **Link**: Direct link to GitHub Actions run
 
