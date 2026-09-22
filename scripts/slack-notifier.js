@@ -920,6 +920,9 @@ function extractFilesFromTitles(suites, results = null) {
     'Cribs Collection Tests': 'Cribs.cy.js',
     'Cribs Collection': 'Cribs.cy.js',
     'Cribs': 'Cribs.cy.js',
+    'Kids Bedroom Set Checkout Suite': 'KidsBedroomSetCheckout.cy.js',
+    'Kids Bedroom Set Checkout': 'KidsBedroomSetCheckout.cy.js',
+    'Kids-Bedroom-Set-Checkout': 'KidsBedroomSetCheckout.cy.js',
     'Kids Sets Collection Suite': 'Kidssets.cy.js',
     'Kids Sets Collection Tests': 'Kidssets.cy.js',
     'Kids Sets Collection': 'Kidssets.cy.js',
@@ -962,8 +965,12 @@ function extractFilesFromTitles(suites, results = null) {
       const patternLower = pattern.toLowerCase();
       if (title.includes(patternLower)) {
         const mappedFile = filePatterns[pattern];
-        // Checkout spec titles contain "nursery set" but must not map to Nurserysets.cy.js
+        // Checkout spec titles contain "nursery set" / "kids set" but must not
+        // map to the collection suites.
         if (mappedFile === 'Nurserysets.cy.js' && title.includes('checkout')) {
+          return;
+        }
+        if (mappedFile === 'Kidssets.cy.js' && title.includes('checkout')) {
           return;
         }
         console.log(`   ✅ Found pattern "${pattern}" in suite title: "${suite.title}" -> ${mappedFile}`);
@@ -984,6 +991,9 @@ function extractFilesFromTitles(suites, results = null) {
           if (title.includes(patternLower)) {
             const mappedFile = filePatterns[pattern];
             if (mappedFile === 'Nurserysets.cy.js' && title.includes('checkout')) {
+              return;
+            }
+            if (mappedFile === 'Kidssets.cy.js' && title.includes('checkout')) {
               return;
             }
             console.log(`${indent}✅ Found pattern "${pattern}" in ${level === 0 ? 'top-level' : 'nested'} item: "${item.title || item.fullTitle}" -> ${mappedFile}`);
@@ -1016,6 +1026,9 @@ function extractFilesFromTitles(suites, results = null) {
             if (testTitle.includes(patternLower)) {
               const mappedFile = filePatterns[pattern];
               if (mappedFile === 'Nurserysets.cy.js' && testTitle.includes('checkout')) {
+                return;
+              }
+              if (mappedFile === 'Kidssets.cy.js' && testTitle.includes('checkout')) {
                 return;
               }
               console.log(`${indent}✅ Found pattern "${pattern}" in test title: "${test.title || test.fullTitle}" -> ${mappedFile}`);
