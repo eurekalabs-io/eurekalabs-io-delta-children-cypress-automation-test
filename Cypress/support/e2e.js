@@ -54,10 +54,13 @@ beforeEach(() => {
 
 // Global cleanup to release memory between tests
 afterEach(function () {
-  // NurserySetCheckout must keep cart/checkout cookies until the next
+  // Checkout specs must keep cart/checkout cookies until the next
   // beforeEach. Clearing here emptied the cart while checkout still ran.
-  if (Cypress.spec.relative.includes('NurserySetCheckout')) {
-    cy.log('Skipping cookie cleanup for NurserySetCheckout');
+  if (
+    Cypress.spec.relative.includes('NurserySetCheckout') ||
+    Cypress.spec.relative.includes('KidsBedroomSetCheckout')
+  ) {
+    cy.log(`Skipping cookie cleanup for ${Cypress.spec.name}`);
     return;
   }
 
