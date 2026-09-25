@@ -162,4 +162,23 @@ export default class ProductDetailsPage extends BasePage {
       }
     });
   }
+
+  /** Second swatch on a standard crib PDP, then confirm the hero image updates. */
+  static selectDifferentVariantAndValidateImages() {
+    cy.selectDifferentVariantOnPDPAndValidateImages();
+  }
+
+  /**
+   * Standard PDP Add To Cart (form.main-product-form), not the bundle builder button.
+   * Accessories and the sticky bar also post to /cart/add, so the click stays on the main form.
+   */
+  static addStandardProductToCart() {
+    cy.intercept('POST', '**/cart/add*').as('standardAddToCart');
+    cy.get('form.main-product-form.regular button[data-submit-button]', { timeout: 20000 })
+      .first()
+      .scrollIntoView()
+      .click({ force: true });
+    cy.wait('@standardAddToCart', { timeout: 30000 }).its('response.statusCode').should('be.oneOf', [200, 201, 302]);
+    cy.log('Add To Cart submitted from the main product form');
+  }
 }

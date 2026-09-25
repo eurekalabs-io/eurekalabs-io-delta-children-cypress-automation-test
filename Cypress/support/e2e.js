@@ -58,7 +58,8 @@ afterEach(function () {
   // beforeEach. Clearing here emptied the cart while checkout still ran.
   if (
     Cypress.spec.relative.includes('NurserySetCheckout') ||
-    Cypress.spec.relative.includes('KidsBedroomSetCheckout')
+    Cypress.spec.relative.includes('KidsBedroomSetCheckout') ||
+    Cypress.spec.relative.includes('CribsCheckout')
   ) {
     cy.log(`Skipping cookie cleanup for ${Cypress.spec.name}`);
     return;
