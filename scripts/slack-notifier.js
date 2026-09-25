@@ -916,6 +916,9 @@ function getExpectedTestFiles() {
  */
 function extractFilesFromTitles(suites, results = null) {
   const filePatterns = {
+    'Cribs Checkout Suite': 'CribsCheckout.cy.js',
+    'Cribs Checkout': 'CribsCheckout.cy.js',
+    'Cribs-Checkout': 'CribsCheckout.cy.js',
     'Cribs Collection Suite': 'Cribs.cy.js',
     'Cribs Collection Tests': 'Cribs.cy.js',
     'Cribs Collection': 'Cribs.cy.js',
@@ -973,6 +976,9 @@ function extractFilesFromTitles(suites, results = null) {
         if (mappedFile === 'Kidssets.cy.js' && title.includes('checkout')) {
           return;
         }
+        if (mappedFile === 'Cribs.cy.js' && title.includes('checkout')) {
+          return;
+        }
         console.log(`   ✅ Found pattern "${pattern}" in suite title: "${suite.title}" -> ${mappedFile}`);
         foundFiles.add(mappedFile);
       }
@@ -994,6 +1000,9 @@ function extractFilesFromTitles(suites, results = null) {
               return;
             }
             if (mappedFile === 'Kidssets.cy.js' && title.includes('checkout')) {
+              return;
+            }
+            if (mappedFile === 'Cribs.cy.js' && title.includes('checkout')) {
               return;
             }
             console.log(`${indent}✅ Found pattern "${pattern}" in ${level === 0 ? 'top-level' : 'nested'} item: "${item.title || item.fullTitle}" -> ${mappedFile}`);
@@ -1029,6 +1038,9 @@ function extractFilesFromTitles(suites, results = null) {
                 return;
               }
               if (mappedFile === 'Kidssets.cy.js' && testTitle.includes('checkout')) {
+                return;
+              }
+              if (mappedFile === 'Cribs.cy.js' && testTitle.includes('checkout')) {
                 return;
               }
               console.log(`${indent}✅ Found pattern "${pattern}" in test title: "${test.title || test.fullTitle}" -> ${mappedFile}`);
