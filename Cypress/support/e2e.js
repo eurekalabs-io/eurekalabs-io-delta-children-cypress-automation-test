@@ -43,7 +43,7 @@ Cypress.on("uncaught:exception", () => {
 const app = window.top;
 if (app && app.document && !app.document.head.querySelector('[data-hide-command-log-request]')) {
   const style = app.document.createElement('style');
-  style.innerHTML = '.command-name-request, .command-name-xhr { display: none }';
+  style.innerHTML = '.command-name-request, .command-name-xhr, .command-name-fetch { display: none !important }';
   style.setAttribute('data-hide-command-log-request', '');
   app.document.head.appendChild(style);
 }

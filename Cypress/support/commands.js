@@ -348,9 +348,15 @@ Cypress.Commands.add('stubStorefrontNoise', () => {
     '**/klck.dev/**',
     '**/elfsight.com/**',
     '**/searchanise-ef84.kxcdn.com/**',
+    // Shopify storefront telemetry (OpenTelemetry). Not cart or checkout.
+    // The page posts it on a timer for the whole session.
+    '**/otlp-http-production.shopifysvc.com/**',
+    '**://*.shopifysvc.com/**',
   ];
   patterns.forEach((pattern) => {
-    cy.intercept(pattern, { statusCode: 204, body: '' });
+    // log: false keeps the stub, but drops the request from the command log
+    // (open and run). Otherwise each telemetry POST shows as "(fetch) … no alias".
+    cy.intercept(pattern, { statusCode: 204, body: '', log: false });
   });
 });
 

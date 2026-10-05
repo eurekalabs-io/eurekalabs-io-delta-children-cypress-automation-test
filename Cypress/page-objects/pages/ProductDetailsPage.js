@@ -1,5 +1,13 @@
 import BasePage from '../BasePage';
 
+const toMoney = (value) => {
+  const match = String(value).replace(/,/g, '').match(/(\d+\.\d{2})/);
+  if (!match) {
+    throw new Error(`Could not read a price from "${value}"`);
+  }
+  return `$${match[1]}`;
+};
+
 export default class ProductDetailsPage extends BasePage {
   // Generic selector that searches for add to cart button with any ID variant
   // Works with #bundle-add-to-cart, #bundle-add-to-cart-27, etc.
@@ -169,16 +177,128 @@ export default class ProductDetailsPage extends BasePage {
   }
 
   /**
-   * Standard PDP Add To Cart (form.main-product-form), not the bundle builder button.
-   * Accessories and the sticky bar also post to /cart/add, so the click stays on the main form.
+   * Clicks Add To Cart on the main crib form.
+   * The storefront posts the crib first, then a second /cart/add.js with the
+   * selected ADD MORE items and warranty. Pass expectUpsells when those were
+   * chosen before this click so the test does not leave the PDP early.
    */
-  static addStandardProductToCart() {
-    cy.intercept('POST', '**/cart/add*').as('standardAddToCart');
+  static addStandardProductToCart({ expectUpsells = false } = {}) {
+    cy.intercept('POST', '**/cart/add.js').as('standardAddToCart');
     cy.get('form.main-product-form.regular button[data-submit-button]', { timeout: 20000 })
       .first()
       .scrollIntoView()
       .click({ force: true });
-    cy.wait('@standardAddToCart', { timeout: 30000 }).its('response.statusCode').should('be.oneOf', [200, 201, 302]);
+    cy.wait('@standardAddToCart', { timeout: 30000 }).its('response.statusCode').should('be.oneOf', [200, 201]);
+    if (expectUpsells) {
+      cy.wait('@standardAddToCart', { timeout: 30000 }).its('response.statusCode').should('be.oneOf', [200, 201]);
+      cy.log('Add To Cart posted the crib and then the selected add-on / warranty');
+      return;
+    }
     cy.log('Add To Cart submitted from the main product form');
+  }
+
+  /**
+   * ADD MORE & SAVE! must be in the DOM and visible before any add-on can be chosen.
+   */
+  static assertAddMoreAndSaveAvailable() {
+    cy.get('form.main-product-form.regular h3.add-more-title', { timeout: 20000 })
+      .should('exist')
+      .and('be.visible')
+      .and('contain', 'ADD MORE & SAVE!');
+    cy.get('form.main-product-form.regular .product-add-more', { timeout: 20000 })
+      .should('exist')
+      .and('be.visible');
+    cy.log('ADD MORE & SAVE! is available and visible');
+  }
+
+  /** Visible ADD MORE price and variant id for the Standard Mattress option. */
+  static captureStandardMattressOffer() {
+    return cy
+      .get('form.main-product-form.regular input[data-variant-title="Standard Mattress"]', { timeout: 20000 })
+      .then(($input) => {
+        const variantId = $input.attr('data-variant-id');
+        const visible = $input.closest('.product-add-more-option').find('.add-more-pricing .price').text();
+        const price = toMoney(visible || $input.attr('data-variant-price'));
+        expect(variantId, 'Standard Mattress variant id').to.be.a('string').and.not.be.empty;
+        Cypress.log({ name: 'Mattress price', message: `${price} (${variantId})` });
+        return { variantId, price };
+      });
+  }
+
+  /** Visible Accident Protection price and the warranty variant id. */
+  static captureWarrantyOffer() {
+    return cy.get('extended-warranty.product-extended-warranty', { timeout: 20000 }).then(($warranty) => {
+      const variantId = $warranty.attr('variant-id');
+      const price = toMoney($warranty.find('.product-extended-warranty-price').text());
+      expect(variantId, 'warranty variant id').to.be.a('string').and.not.be.empty;
+      Cypress.log({ name: 'Warranty price', message: `${price} (${variantId})` });
+      return { variantId, price };
+    });
+  }
+
+  /**
+   * Opens the first add-on group and selects Standard Mattress.
+   * The group stays collapsed until its summary is opened, so the option
+   * is asserted visible before either click.
+   */
+  static selectStandardMattressAddOn() {
+    const group = 'form.main-product-form.regular .product-add-more details.product-add-more-group';
+
+    // Set `open` here, without queueing another cy command. A click inside
+    // this callback is appended after the visibility checks below, so those
+    // checks used to run while the <details> was still closed.
+    // checkVisibility() then fails even though the option's own CSS is visible.
+    cy.get(group, { timeout: 20000 })
+      .first()
+      .scrollIntoView()
+      .then(($details) => {
+        $details.prop('open', true);
+      });
+
+    cy.get(group)
+      .first()
+      .should('have.prop', 'open', true)
+      .find('div.option-even > label')
+      .scrollIntoView()
+      .should('exist')
+      .and('be.visible')
+      .click({ force: true });
+
+    cy.get(group)
+      .first()
+      .find('div.option-even')
+      .click({ force: true });
+
+    cy.get('form.main-product-form.regular input[data-variant-title="Standard Mattress"]')
+      .should('be.checked');
+    cy.log('Standard Mattress add-on selected');
+  }
+
+  /**
+   * Protect Purchase → state DE → Confirm Selection.
+   * The state list stays hidden until Protect Purchase is clicked.
+   */
+  static confirmExtendedWarranty(stateCode = 'DE') {
+    cy.get('span.item-protected', { timeout: 15000 })
+      .should('exist')
+      .and('be.visible')
+      .click({ force: true });
+
+    cy.get('select[id^="extended-warranty-state-select"]', { timeout: 15000 })
+      .should('exist')
+      .scrollIntoView({ block: 'center' })
+      .select(stateCode, { force: true });
+
+    cy.get('button.js-extended-warranty-confirm')
+      .should('be.visible')
+      .and('not.be.disabled')
+      .click({ force: true });
+
+    // The component sets data-added on <extended-warranty>, not on the
+    // Protect Purchase button. Waiting on the button never finishes, so
+    // Add To Cart was never reached.
+    cy.get('extended-warranty.product-extended-warranty', { timeout: 15000 })
+      .should('have.attr', 'data-added', 'true');
+    cy.log(`Extended warranty confirmed for state ${stateCode}`);
   }
 }
