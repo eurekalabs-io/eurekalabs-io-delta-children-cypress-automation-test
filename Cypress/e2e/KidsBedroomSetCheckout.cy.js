@@ -19,7 +19,6 @@ describe('Kids Bedroom Set Checkout Suite', () => {
 
   beforeEach(() => {
     cy.log('Setting up test environment for Kids Bedroom Sets Collection');
-    cy.stubStorefrontNoise();
     // Reset cookies/storage before building the bundle so a poisoned
     // Shopify checkout token from a previous run is not reused. Do not
     // clear again after add-to-cart: that drops the cart cookie and

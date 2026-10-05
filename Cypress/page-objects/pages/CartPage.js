@@ -1,5 +1,43 @@
 import BasePage from '../BasePage';
 
+const toMoney = (value) => {
+  const match = String(value).replace(/,/g, '').match(/(\d+\.\d{2})/);
+  if (!match) {
+    throw new Error(`Could not read a price from "${value}"`);
+  }
+  return `$${match[1]}`;
+};
+
+/**
+ * Cypress 16 `be.visible` uses Element.checkVisibility(). That returns false
+ * when an ancestor is not rendered (display:none, closed <details>, the
+ * hidden mini-cart) even if this node's own CSS is display:block /
+ * visibility:visible / opacity:1. The cart prints each price twice; keep the
+ * copy that actually has a box on the cart page.
+ */
+const isRenderedCartPrice = (el) => {
+  if (!el || !el.isConnected) return false;
+  if (el.closest('.mini-cart, .js-mini-cart, [hidden]')) return false;
+  const details = el.closest('details');
+  if (details && !details.open) return false;
+
+  const view = el.ownerDocument.defaultView;
+  for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+    const style = view.getComputedStyle(node);
+    if (
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      style.visibility === 'collapse' ||
+      style.opacity === '0'
+    ) {
+      return false;
+    }
+  }
+
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+};
+
 export default class CartPage extends BasePage {
   // Generic selector for the first add-on
   static firstAddOn = '.cb-addons-variant .v2-button';
@@ -72,6 +110,23 @@ export default class CartPage extends BasePage {
     cy.visit('/cart');
     cy.acceptCookieBannerIfPresent();
     cy.get('body', { timeout: 30000 }).should('exist');
+  }
+
+  /**
+   * The price shown on the cart line for this variant must match the PDP price.
+   * Scoped to the cart page so the mini-cart copy of the same line is ignored.
+   * Several .cart__item-price nodes can match; only the one the page renders
+   * is compared.
+   */
+  static assertVariantPrice(variantId, expectedPrice) {
+    const expected = toMoney(expectedPrice);
+    cy.get(`.js-cart-page .js-line-item[data-variant-id="${variantId}"] .cart__item-price`, {
+      timeout: 20000,
+    }).should(($prices) => {
+      const rendered = $prices.toArray().filter(isRenderedCartPrice);
+      expect(rendered, `rendered cart price for variant ${variantId}`).to.have.length.greaterThan(0);
+      expect(toMoney(rendered[0].textContent), `cart price for variant ${variantId}`).to.eq(expected);
+    });
   }
 
   static assertHasItems() {

@@ -11,6 +11,9 @@ const checkoutData = require("../fixtures/Checkout.json");
 const CRIBS_COLLECTION_URL =
   "https://www.deltachildren.com/collections/cribs";
 
+const GROW_WITH_ME_PDP_URL =
+  "https://www.deltachildren.com/collections/cribs/products/grow-with-me-9-in-1-convertible-bassinet-to-crib";
+
 describe("Cribs Checkout Suite", () => {
   before(() => {
     cy.log("Starting Cribs Checkout Suite");
@@ -22,7 +25,6 @@ describe("Cribs Checkout Suite", () => {
 
   beforeEach(() => {
     cy.log("Setting up test environment for Cribs collection");
-    cy.stubStorefrontNoise();
     // Reset cookies/storage before choosing a crib so a poisoned Shopify
     // checkout token from a previous run is not reused. Do not clear again
     // after Add To Cart: that drops the cart cookie and /checkout cannot
@@ -73,6 +75,62 @@ describe("Cribs Checkout Suite", () => {
           CheckoutPage.endingCheckoutProcess(checkoutData);
         });
       });
+    });
+  });
+
+  it("Cribs Checkout - Add-ons and save warranty", function () {
+    this.test.title = "Cribs Checkout - Add-ons and save warranty";
+    cy.viewport(1050, 818);
+    cy.visit(GROW_WITH_ME_PDP_URL);
+    cy.acceptCookieBannerIfPresent();
+    cy.url({ timeout: 45000 }).should(
+      "include",
+      "/products/grow-with-me-9-in-1-convertible-bassinet-to-crib"
+    );
+
+    ProductDetailsPage.assertAddMoreAndSaveAvailable();
+    ProductDetailsPage.captureStandardMattressOffer().as("addOnOffer");
+    ProductDetailsPage.captureWarrantyOffer().as("warrantyOffer");
+    // Choose the mattress and warranty on the PDP first. Add To Cart then
+    // posts the crib and, in a follow-up request, those selected items.
+    ProductDetailsPage.selectStandardMattressAddOn();
+    ProductDetailsPage.confirmExtendedWarranty("DE");
+    ProductDetailsPage.addStandardProductToCart({ expectUpsells: true });
+    CartPage.goToCart();
+
+    cy.get("@addOnOffer").then((offer) => {
+      CartPage.assertVariantPrice(offer.variantId, offer.price);
+    });
+    cy.get("@warrantyOffer").then((offer) => {
+      CartPage.assertVariantPrice(offer.variantId, offer.price);
+      // Checkout stays inside this .then() so it cannot start before both
+      // cart prices have been compared with the PDP.
+      CheckoutPage.endingCheckoutProcess(checkoutData);
+    });
+  });
+
+  it("Cribs Checkout - Only warranty", function () {
+    this.test.title = "Cribs Checkout - Only warranty";
+    cy.viewport(1050, 818);
+    cy.visit(GROW_WITH_ME_PDP_URL);
+    cy.acceptCookieBannerIfPresent();
+    cy.url({ timeout: 45000 }).should(
+      "include",
+      "/products/grow-with-me-9-in-1-convertible-bassinet-to-crib"
+    );
+
+    ProductDetailsPage.captureWarrantyOffer().as("warrantyOffer");
+    // Confirm the warranty on the PDP first. Add To Cart then posts the crib
+    // and, in a follow-up request, the warranty.
+    ProductDetailsPage.confirmExtendedWarranty("DE");
+    ProductDetailsPage.addStandardProductToCart({ expectUpsells: true });
+    CartPage.goToCart();
+
+    cy.get("@warrantyOffer").then((offer) => {
+      CartPage.assertVariantPrice(offer.variantId, offer.price);
+      // Checkout stays inside this .then() so it cannot start before the
+      // warranty price has been compared with the PDP.
+      CheckoutPage.endingCheckoutProcess(checkoutData);
     });
   });
 });

@@ -22,7 +22,6 @@ describe('Nursery Sets Collection Suite', () => {
   });
   beforeEach(() => {
     cy.log('Setting up test environment for Nursery Sets Collection');
-    cy.stubStorefrontNoise();
     cy.visit('/pages/bundles');
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
