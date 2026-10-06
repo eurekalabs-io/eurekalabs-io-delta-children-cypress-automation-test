@@ -1223,14 +1223,60 @@ function isCribsCheckoutSuite(suite) {
   return file.includes('cribscheckout') || title.includes('cribs checkout');
 }
 
-function formatCribsCheckoutScenarios() {
-  let block = '*Escenarios automatizados:*\n';
-  CRIBS_CHECKOUT_SCENARIOS.forEach((scenario, index) => {
-    block += `${index + 1}. *${scenario.name}*\n`;
+function scenarioForCribsTest(title) {
+  const text = String(title || '').toLowerCase();
+  if (text.includes('add-ons') || text.includes('addons')) return CRIBS_CHECKOUT_SCENARIOS[1];
+  if (text.includes('only warranty')) return CRIBS_CHECKOUT_SCENARIOS[2];
+  if (text.includes('complete checkout')) return CRIBS_CHECKOUT_SCENARIOS[0];
+  return null;
+}
+
+function cribsScenarioLabel(test) {
+  const scenario = scenarioForCribsTest(`${test.title || ''} ${test.fullTitle || ''}`);
+  if (scenario) return scenario.name;
+  const title = test.title || test.fullTitle || 'Unnamed scenario';
+  return title.replace(/^Cribs Checkout Suite\s+/i, '').replace(/^Cribs Checkout\s+-\s+/i, '');
+}
+
+/**
+ * One line per Cribs Checkout scenario, same shape as Accessibility Suite:
+ * status, scenario name, duration, then the steps that scenario covers.
+ */
+function formatCribsCheckoutBreakdown(suite) {
+  const tests = (suite && suite.tests) || [];
+  const used = new Set();
+  let block = '';
+
+  const appendScenario = (scenario, test) => {
+    const emoji = !test ? '⏸️' : test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
+    const duration = test && test.duration ? ` (${formatDuration(test.duration)})` : '';
+    block += `${emoji} *${scenario.name}*${duration}\n`;
     scenario.detail.forEach((step) => {
       block += `   • ${step}\n`;
     });
+    if (test && test.state === 'failed' && test.err) {
+      const errorMsg = test.err.message || test.err.estack || 'Unknown error';
+      const shortError = errorMsg.length > 150 ? errorMsg.substring(0, 150) + '...' : errorMsg;
+      block += `   └─ Error: ${shortError}\n`;
+    }
+  };
+
+  CRIBS_CHECKOUT_SCENARIOS.forEach((scenario) => {
+    const test = tests.find((candidate, index) => {
+      if (used.has(index)) return false;
+      return scenarioForCribsTest(`${candidate.title || ''} ${candidate.fullTitle || ''}`) === scenario;
+    });
+    if (test) used.add(tests.indexOf(test));
+    appendScenario(scenario, test);
   });
+
+  tests.forEach((test, index) => {
+    if (used.has(index)) return;
+    const emoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
+    const duration = test.duration ? ` (${formatDuration(test.duration)})` : '';
+    block += `${emoji} *${cribsScenarioLabel(test)}*${duration}\n`;
+  });
+
   return block;
 }
 
@@ -1297,11 +1343,21 @@ function formatTestDetails(suites, results = null) {
     
     details += suiteHeader + suiteSummary;
 
+    // Accessibility lists every it() on its own line. Cribs Checkout does the
+    // same, with the steps under each scenario. This block is kept even when
+    // the shared details budget is tight, so the other scenarios are not cut
+    // off after the first test line.
     if (isCribsCheckoutSuite(suite)) {
-      const scenarios = formatCribsCheckoutScenarios();
-      if (details.length + scenarios.length <= MAX_LENGTH) {
-        details += scenarios;
+      const breakdown = formatCribsCheckoutBreakdown(suite);
+      if (details.length + breakdown.length <= MAX_LENGTH) {
+        details += breakdown;
+      } else {
+        const room = MAX_LENGTH - details.length;
+        if (room > 80) {
+          details += breakdown.substring(0, room) + '\n';
+        }
       }
+      return;
     }
     
     // Show all tests with their status
@@ -1615,6 +1671,18 @@ function createSlackMessage(summary, results) {
       ts: Math.floor(Date.now() / 1000)
     }
   ];
+
+  const cribsSuite = suites.find(isCribsCheckoutSuite);
+  if (cribsSuite) {
+    const breakdown = formatCribsCheckoutBreakdown(cribsSuite);
+    const cribsFailed = cribsSuite.failed > 0;
+    attachments.push({
+      color: cribsFailed ? colors.failure : colors.success,
+      title: '🛒 Cribs Checkout Suite — escenarios',
+      text: `Tests: ${cribsSuite.total} | ✅ ${cribsSuite.passed} | ❌ ${cribsSuite.failed} | ⏸️ ${cribsSuite.pending}\n${breakdown}`,
+      mrkdwn_in: ['text']
+    });
+  }
 
   // Add detailed test results as a second attachment if we have results
   if (hasResults && suites.length > 0 && testDetails && testDetails.trim().length > 0) {
