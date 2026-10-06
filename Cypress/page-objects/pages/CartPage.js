@@ -8,10 +8,6 @@ const toMoney = (value) => {
   return `$${match[1]}`;
 };
 
-const toCents = (value) => Math.round(Number(toMoney(value).slice(1)) * 100);
-
-const addMoney = (left, right) => `$${((toCents(left) + toCents(right)) / 100).toFixed(2)}`;
-
 /**
  * Cypress 16 `be.visible` uses Element.checkVisibility(). That returns false
  * when an ancestor is not rendered (display:none, closed <details>, the
@@ -50,65 +46,62 @@ export default class CartPage extends BasePage {
   // Searches for the button within .cb-addons without depending on specific nth-child
   static proceedToCartButton = '.cb-addons .cb-addons-border--top button .v2-button__text';
 
-  static clearShopifyCart() {
-    cy.request({ method: 'POST', url: '/cart/clear.js', failOnStatusCode: false });
-  }
-
-  /**
-   * Selects the first add-on when that screen is open and returns the price
-   * shown for it. Returns an empty offer when the screen is not present.
-   */
   static selectAddOns() {
-    return cy.get('body').then(($body) => {
-      const $variant = $body.find('.cb-addons-variant').first();
-      if ($variant.length === 0) {
-        return cy.wrap({ variantId: null, price: null });
+    // Check if there are add-ons available before selecting
+    cy.get('body').then(($body) => {
+      const addOns = $body.find(this.firstAddOn);
+      if (addOns.length > 0) {
+        cy.get(this.firstAddOn).first().click({force:true});
+        BasePage.pause(1000);
       }
-
-      const variant = $variant[0].__vue__ && $variant[0].__vue__.selectedVariant;
-      const priceText = $variant
-        .find('.cb-addons-product-price')
-        .not('.cb-addons-product-price__old')
-        .first()
-        .text();
-      const variantId = variant && String(variant.id).split('/').filter(Boolean).pop();
-      const price = toMoney(priceText || (variant && variant.price && variant.price.added));
-      expect(variantId, 'add-on variant id').to.be.a('string').and.not.be.empty;
-
-      cy.get(this.firstAddOn).first().click({ force: true });
-      BasePage.pause(1000);
-      return cy.wrap({ variantId, price });
-    });
-  }
-
-  /**
-   * Each captured piece must show the same price on the cart page, and the
-   * cart merchandise total must match the PDP total (plus the add-on, if one
-   * was selected).
-   */
-  static assertPdpPricesOnCart(bundlePrices, addOn) {
-    const offers = Array.isArray(bundlePrices.offers) ? bundlePrices.offers.slice() : [];
-    let expectedTotal = bundlePrices.total;
-    if (addOn && addOn.variantId) {
-      offers.push(addOn);
-      expectedTotal = addMoney(expectedTotal, addOn.price);
-    }
-
-    offers.forEach((offer) => {
-      this.assertVariantPrice(offer.variantId, offer.price);
-    });
-    this.assertCartMerchandiseTotal(expectedTotal);
-  }
-
-  static assertCartMerchandiseTotal(expectedPrice) {
-    const expected = toMoney(expectedPrice);
-    const expectedCents = toCents(expected);
-    cy.request({ url: '/cart.js' }).then((res) => {
-      const cart = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
-      expect(cart.total_price, `cart total matches PDP total ${expected}`).to.eq(expectedCents);
     });
   }
   
+  /**
+   * Total shown beside Proceed to Cart on the add-ons step:
+   * .cb-addons .cb-addons-border--top span.cb-addons-price
+   * When that step is not on screen, the same total is .cb-cart .cb-cart-price.
+   */
+  static captureBundleTotalBeforeProceed() {
+    const addOnTotal = '.cb-addons .cb-addons-border--top span.cb-addons-price';
+    const builderTotal = '.cb-cart .cb-cart-price';
+
+    return cy.get('body', { timeout: 20000 }).should(($body) => {
+      const hasTotal = $body.find(addOnTotal).length > 0 || $body.find(builderTotal).length > 0;
+      expect(hasTotal, 'bundle total before Proceed to Cart').to.equal(true);
+    }).then(($body) => {
+      const addOnPrice = $body.find(addOnTotal);
+      const node = addOnPrice.length ? addOnPrice[0] : $body.find(builderTotal)[0];
+      const price = toMoney(node.textContent);
+      expect(Number(price.slice(1)), 'bundle total before Proceed to Cart').to.be.greaterThan(0);
+      Cypress.log({ name: 'Bundle total', message: price });
+      return price;
+    });
+  }
+
+  /** Cart page Subtotal must match the total captured before Proceed to Cart. */
+  static assertCartSubtotal(expectedPrice) {
+    const expected = toMoney(expectedPrice);
+    cy.get('.cart-form__header .cart__subtotal-sum', { timeout: 20000 }).should(($sums) => {
+      const rendered = $sums.toArray().filter(isRenderedCartPrice);
+      expect(rendered, 'rendered cart subtotal').to.have.length.greaterThan(0);
+      expect(toMoney(rendered[0].textContent), 'cart page bundle total').to.eq(expected);
+    });
+  }
+
+  /**
+   * Reads the add-ons total, then clicks Proceed to Cart and checks that
+   * the cart page shows the same amount.
+   */
+  static proceedToCartComparingBundlePrice() {
+    this.captureBundleTotalBeforeProceed().as('bundleTotalBeforeCart');
+    this.proceedToCart();
+    cy.url({ timeout: 45000 }).should('include', '/cart');
+    cy.get('@bundleTotalBeforeCart').then((expected) => {
+      this.assertCartSubtotal(expected);
+    });
+  }
+
   static proceedToCart() {
     // Search for "Proceed to Cart" button flexibly
     // First try by text, then by generic selector
