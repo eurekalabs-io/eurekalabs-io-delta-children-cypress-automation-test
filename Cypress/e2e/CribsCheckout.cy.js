@@ -45,7 +45,7 @@ describe("Cribs Checkout Suite", () => {
 
   cribs.forEach((data, index) => {
     it(`Cribs-Checkout ${data.category} - ${data.subcategory}`, function () {
-      this.test.title = `Cribs Checkout - Complete checkout ${data.category} - ${data.subcategory}`;
+      this.test.title = `Cribs Checkout - Complete checkout Cribs ${data.category} - ${data.subcategory}`;
       cy.log(`Executing test ${index + 1} of ${cribs.length}: ${data.category} - ${data.subcategory}`);
 
       ProductsListCribsBestSellers.pickRandomProductWithMinSwatches(2).then(({ index: productIndex, count }) => {

@@ -62,14 +62,22 @@ describe('Nursery Sets Collection Suite', () => {
           // selectProducts() will handle product search robustly
           
           ProductDetailsPage.selectProducts();
+          ProductDetailsPage.captureVisibleBundlePrices().as('pdpPrices');
+          CartPage.clearShopifyCart();
           ProductDetailsPage.bundleAddCart();
           
           // Wait a moment for the add-ons screen to appear if it exists
           BasePage.pause(2000);
           
           // Handle add-ons and proceed to cart if present
-          CartPage.selectAddOns();
+          CartPage.selectAddOns().as('addOnPrice');
           CartPage.proceedToCart();
+          cy.url({ timeout: 45000 }).should('include', '/cart');
+          cy.get('@pdpPrices').then((pdpPrices) => {
+            cy.get('@addOnPrice').then((addOnPrice) => {
+              CartPage.assertPdpPricesOnCart(pdpPrices, addOnPrice);
+            });
+          });
         } else {
           // If we're already in the cart, it means the previous product redirected
           // Continue with the next iteration

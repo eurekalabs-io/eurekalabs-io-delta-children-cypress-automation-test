@@ -155,6 +155,35 @@ export default class ProductDetailsPage extends BasePage {
     cy.log('Bundle builder is ready (layout + components section)');
   }
 
+  /**
+   * Prices the shopper sees on the bundle builder, before Add To Cart.
+   * `total` is the Total next to the button. `offers` are the selected pieces
+   * whose own price is added on top of the set (the +$ amount on the PDP).
+   */
+  static captureVisibleBundlePrices() {
+    return cy.get('#dcb-app .cb-cart-price', { timeout: 20000 }).should(($price) => {
+      const amount = Number(toMoney($price.text()).slice(1));
+      expect(amount, 'bundle PDP total').to.be.greaterThan(0);
+    }).then(($price) => {
+      const total = toMoney($price.text());
+      const app = $price[0].closest('#dcb-app');
+      const store = app && app.__vue__ && app.__vue__.$store;
+      const items = (store && store.state && store.state.items) || [];
+      const offers = items
+        .filter((item) => item && !item.exclude && item.price && Number(item.price.added) > 0)
+        .map((item) => ({
+          variantId: String(item.id).split('/').filter(Boolean).pop(),
+          price: `$${(Math.round(Number(item.price.added) * 100) / 100).toFixed(2)}`,
+        }))
+        .filter((offer) => offer.variantId);
+      Cypress.log({
+        name: 'Bundle PDP prices',
+        message: `${total}; ${offers.length} piece(s) with their own price`,
+      });
+      return { total, offers };
+    });
+  }
+
   static bundleAddCart() {
     // First verify if button exists before attempting to click
     cy.get('body').then(($body) => {
