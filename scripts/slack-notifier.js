@@ -1179,6 +1179,62 @@ function getTestFiles(suites, results = null) {
 }
 
 /**
+ * Automated scenarios for Cribs Checkout Suite.
+ * Printed in the Slack report so the channel shows what each case covers,
+ * not only the pass/fail title.
+ */
+const CRIBS_CHECKOUT_SCENARIOS = [
+  {
+    name: 'Complete checkout',
+    detail: [
+      'En la colección Cribs elige una cuna best seller con 2 o más swatches.',
+      'Selecciona el segundo swatch y, si hay 3 o más, también el tercero.',
+      'Abre el PDP. Si expone 2 o más variantes, cambia de variante y valida que las imágenes se actualicen.',
+      'Agrega la cuna al carrito y confirma que /cart.js tiene ítems y total mayor a cero.',
+      'Completa el checkout de invitado hasta la confirmación de la orden.',
+    ],
+  },
+  {
+    name: 'Add-ons and save warranty',
+    detail: [
+      'En el PDP de Grow With Me comprueba que ADD MORE & SAVE! esté visible.',
+      'Guarda el precio de Standard Mattress y el de la garantía de 2 años.',
+      'Selecciona el colchón y confirma la garantía para Delaware.',
+      'Add To Cart envía la cuna y, en un segundo request, el colchón y la garantía.',
+      'En el carrito, el precio visible de ambos coincide con el del PDP.',
+      'Completa el checkout de invitado hasta la confirmación de la orden.',
+    ],
+  },
+  {
+    name: 'Only warranty',
+    detail: [
+      'En el mismo PDP guarda el precio de la garantía de 2 años.',
+      'Confirma la garantía para Delaware, sin seleccionar colchón.',
+      'Add To Cart envía la cuna y, en un segundo request, la garantía.',
+      'En el carrito, el precio visible de la garantía coincide con el del PDP.',
+      'Completa el checkout de invitado hasta la confirmación de la orden.',
+    ],
+  },
+];
+
+function isCribsCheckoutSuite(suite) {
+  const file = String(suite.file || suite.filePath || '').toLowerCase();
+  const title = String(suite.title || '').toLowerCase();
+  return file.includes('cribscheckout') || title.includes('cribs checkout');
+}
+
+function formatCribsCheckoutScenarios() {
+  let block = '*Escenarios automatizados:*\n';
+  CRIBS_CHECKOUT_SCENARIOS.forEach((scenario, index) => {
+    block += `${index + 1}. *${scenario.name}*\n`;
+    scenario.detail.forEach((step) => {
+      block += `   • ${step}\n`;
+    });
+  });
+  return block;
+}
+
+/**
  * Format test details for Slack
  * Shows all tests and subtests with their status
  */
@@ -1240,6 +1296,13 @@ function formatTestDetails(suites, results = null) {
     }
     
     details += suiteHeader + suiteSummary;
+
+    if (isCribsCheckoutSuite(suite)) {
+      const scenarios = formatCribsCheckoutScenarios();
+      if (details.length + scenarios.length <= MAX_LENGTH) {
+        details += scenarios;
+      }
+    }
     
     // Show all tests with their status
     // Use suite.tests if available, otherwise skip (shouldn't happen if suite.total > 0)
