@@ -1179,42 +1179,12 @@ function getTestFiles(suites, results = null) {
 }
 
 /**
- * Automated scenarios for Cribs Checkout Suite.
- * Printed in the Slack report so the channel shows what each case covers,
- * not only the pass/fail title.
+ * English titles shown for Cribs Checkout Suite inside Detailed Test Results.
  */
 const CRIBS_CHECKOUT_SCENARIOS = [
-  {
-    name: 'Complete checkout',
-    detail: [
-      'En la colección Cribs elige una cuna best seller con 2 o más swatches.',
-      'Selecciona el segundo swatch y, si hay 3 o más, también el tercero.',
-      'Abre el PDP. Si expone 2 o más variantes, cambia de variante y valida que las imágenes se actualicen.',
-      'Agrega la cuna al carrito y confirma que /cart.js tiene ítems y total mayor a cero.',
-      'Completa el checkout de invitado hasta la confirmación de la orden.',
-    ],
-  },
-  {
-    name: 'Add-ons and save warranty',
-    detail: [
-      'En el PDP de Grow With Me comprueba que ADD MORE & SAVE! esté visible.',
-      'Guarda el precio de Standard Mattress y el de la garantía de 2 años.',
-      'Selecciona el colchón y confirma la garantía para Delaware.',
-      'Add To Cart envía la cuna y, en un segundo request, el colchón y la garantía.',
-      'En el carrito, el precio visible de ambos coincide con el del PDP.',
-      'Completa el checkout de invitado hasta la confirmación de la orden.',
-    ],
-  },
-  {
-    name: 'Only warranty',
-    detail: [
-      'En el mismo PDP guarda el precio de la garantía de 2 años.',
-      'Confirma la garantía para Delaware, sin seleccionar colchón.',
-      'Add To Cart envía la cuna y, en un segundo request, la garantía.',
-      'En el carrito, el precio visible de la garantía coincide con el del PDP.',
-      'Completa el checkout de invitado hasta la confirmación de la orden.',
-    ],
-  },
+  { name: 'Complete checkout' },
+  { name: 'Add-ons and save warranty' },
+  { name: 'Only warranty' },
 ];
 
 function isCribsCheckoutSuite(suite) {
@@ -1239,8 +1209,7 @@ function cribsScenarioLabel(test) {
 }
 
 /**
- * One line per Cribs Checkout scenario, same shape as Accessibility Suite:
- * status, scenario name, duration, then the steps that scenario covers.
+ * One English title per Cribs Checkout scenario: status, name, and duration.
  */
 function formatCribsCheckoutBreakdown(suite) {
   const tests = (suite && suite.tests) || [];
@@ -1251,13 +1220,10 @@ function formatCribsCheckoutBreakdown(suite) {
     const emoji = !test ? '⏸️' : test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
     const duration = test && test.duration ? ` (${formatDuration(test.duration)})` : '';
     block += `${emoji} *${scenario.name}*${duration}\n`;
-    scenario.detail.forEach((step) => {
-      block += `   • ${step}\n`;
-    });
     if (test && test.state === 'failed' && test.err) {
       const errorMsg = test.err.message || test.err.estack || 'Unknown error';
       const shortError = errorMsg.length > 150 ? errorMsg.substring(0, 150) + '...' : errorMsg;
-      block += `   └─ Error: ${shortError}\n`;
+      block += `  └─ Error: ${shortError}\n`;
     }
   };
 
@@ -1343,10 +1309,7 @@ function formatTestDetails(suites, results = null) {
     
     details += suiteHeader + suiteSummary;
 
-    // Accessibility lists every it() on its own line. Cribs Checkout does the
-    // same, with the steps under each scenario. This block is kept even when
-    // the shared details budget is tight, so the other scenarios are not cut
-    // off after the first test line.
+    // Cribs Checkout lists one English title per scenario, without the step list.
     if (isCribsCheckoutSuite(suite)) {
       const breakdown = formatCribsCheckoutBreakdown(suite);
       if (details.length + breakdown.length <= MAX_LENGTH) {
@@ -1671,18 +1634,6 @@ function createSlackMessage(summary, results) {
       ts: Math.floor(Date.now() / 1000)
     }
   ];
-
-  const cribsSuite = suites.find(isCribsCheckoutSuite);
-  if (cribsSuite) {
-    const breakdown = formatCribsCheckoutBreakdown(cribsSuite);
-    const cribsFailed = cribsSuite.failed > 0;
-    attachments.push({
-      color: cribsFailed ? colors.failure : colors.success,
-      title: '🛒 Cribs Checkout Suite — escenarios',
-      text: `Tests: ${cribsSuite.total} | ✅ ${cribsSuite.passed} | ❌ ${cribsSuite.failed} | ⏸️ ${cribsSuite.pending}\n${breakdown}`,
-      mrkdwn_in: ['text']
-    });
-  }
 
   // Add detailed test results as a second attachment if we have results
   if (hasResults && suites.length > 0 && testDetails && testDetails.trim().length > 0) {
