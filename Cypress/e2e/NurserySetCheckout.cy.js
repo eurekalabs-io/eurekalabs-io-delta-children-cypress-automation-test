@@ -57,15 +57,24 @@ describe('Nursery Set Checkout Suite', () => {
             .and('be.visible');
 
           ProductDetailsPage.selectProducts();
+          ProductDetailsPage.captureVisibleBundlePrices().as('pdpPrices');
+          CartPage.clearShopifyCart();
           ProductDetailsPage.bundleAddCart();
           BasePage.pause(2000);
-          CartPage.selectAddOns();
+          CartPage.selectAddOns().as('addOnPrice');
           CartPage.proceedToCart();
-        }
 
-        cy.url({ timeout: 45000 }).should('include', '/cart');
-        CartPage.assertShopifyCartHasItems();
-        CheckoutPage.endingCheckoutProcess(checkoutData);
+          cy.url({ timeout: 45000 }).should('include', '/cart');
+          CartPage.assertShopifyCartHasItems();
+          cy.get('@pdpPrices').then((pdpPrices) => {
+            cy.get('@addOnPrice').then((addOnPrice) => {
+              CartPage.assertPdpPricesOnCart(pdpPrices, addOnPrice);
+              // Checkout stays inside this .then() so it cannot start before
+              // the cart prices have been compared with the PDP.
+              CheckoutPage.endingCheckoutProcess(checkoutData);
+            });
+          });
+        }
       });
     });
   });

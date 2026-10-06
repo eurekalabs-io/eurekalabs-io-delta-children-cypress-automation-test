@@ -79,6 +79,22 @@ describe('Kids Sets Collection Suite', () => {
     cy.log('Test completed, cleaning up...');
   });
 
+  const addSelectedKidsSetAndCheckPrices = () => {
+    ProductDetailsPage.selectProductsKidsSets();
+    ProductDetailsPage.captureVisibleBundlePrices().as('pdpPrices');
+    CartPage.clearShopifyCart();
+    ProductDetailsPage.bundleAddCart();
+    BasePage.pause(2000);
+    CartPage.selectAddOns().as('addOnPrice');
+    CartPage.proceedToCart();
+    cy.url({ timeout: 45000 }).should('include', '/cart');
+    cy.get('@pdpPrices').then((pdpPrices) => {
+      cy.get('@addOnPrice').then((addOnPrice) => {
+        CartPage.assertPdpPricesOnCart(pdpPrices, addOnPrice);
+      });
+    });
+  };
+
   // Create a separate test for each set in the array
   // This ensures each iteration is registered as a separate test in Cypress reports
   sets.forEach((data, index) => {
@@ -105,8 +121,7 @@ describe('Kids Sets Collection Suite', () => {
                 .should('exist')
                 .and('be.visible');
 
-              ProductDetailsPage.selectProductsKidsSets();
-              ProductDetailsPage.bundleAddCart();
+              addSelectedKidsSetAndCheckPrices();
             } else {
               // If we're still not in /products/, the button may not have worked
               // Try searching for the button again or continue if we're already on a valid page
@@ -118,8 +133,7 @@ describe('Kids Sets Collection Suite', () => {
                   cy.get('.components-section', { timeout: 30000 })
                     .should('exist')
                     .and('be.visible');
-                  ProductDetailsPage.selectProductsKidsSets();
-                  ProductDetailsPage.bundleAddCart();
+                  addSelectedKidsSetAndCheckPrices();
                 } else {
                   cy.log(`Could not navigate to product page. Current URL: ${finalUrl}`);
                 }
@@ -139,8 +153,7 @@ describe('Kids Sets Collection Suite', () => {
           // Therefore, we don't verify it here, it's handled inside selectProductsKidsSets()
           // selectProductsKidsSets() will handle product search robustly
           
-          ProductDetailsPage.selectProductsKidsSets();
-          ProductDetailsPage.bundleAddCart();
+          addSelectedKidsSetAndCheckPrices();
         }
       });
       
