@@ -60,19 +60,49 @@ module.exports = defineConfig({
         return launchOptions;
       });
 
+      const fs = require('fs');
+      const path = require('path');
+      const reportsDir = path.join(__dirname, 'Cypress/reports');
+      const selectedProductsFile = path.join(reportsDir, 'selected-products.json');
+
+      const readSelectedProducts = () => {
+        if (!fs.existsSync(selectedProductsFile)) return [];
+        try {
+          const parsed = JSON.parse(fs.readFileSync(selectedProductsFile, 'utf8'));
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          return [];
+        }
+      };
+
+      on('before:run', () => {
+        fs.mkdirSync(reportsDir, { recursive: true });
+        fs.writeFileSync(selectedProductsFile, '[]');
+      });
+
       // Debug dumps for checkout (JSON + console). Used when Complete order
       // is missing or Shopify shows "There was a problem with our checkout".
       on('task', {
         checkoutTrace(report) {
-          const fs = require('fs');
-          const path = require('path');
-          const dir = path.join(__dirname, 'Cypress/reports');
-          fs.mkdirSync(dir, { recursive: true });
-          const file = path.join(dir, `checkout-trace-${Date.now()}.json`);
+          fs.mkdirSync(reportsDir, { recursive: true });
+          const file = path.join(reportsDir, `checkout-trace-${Date.now()}.json`);
           fs.writeFileSync(file, JSON.stringify(report, null, 2));
           console.log('[checkout-trace]', file);
           console.log(JSON.stringify(report, null, 2));
           return file;
+        },
+        recordSelectedProduct(entry) {
+          fs.mkdirSync(reportsDir, { recursive: true });
+          const list = readSelectedProducts();
+          list.push({
+            spec: entry && entry.spec,
+            test: entry && entry.test,
+            product: entry && entry.product,
+            path: entry && entry.path,
+            at: new Date().toISOString(),
+          });
+          fs.writeFileSync(selectedProductsFile, JSON.stringify(list, null, 2));
+          return null;
         },
       });
 

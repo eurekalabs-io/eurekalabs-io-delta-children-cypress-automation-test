@@ -279,11 +279,12 @@ jobs:
       
       - name: Upload Cypress screenshots
         uses: actions/upload-artifact@v6
-        if: failure()
+        if: always()
         with:
           name: cypress-screenshots
           path: Cypress/screenshots
-          retention-days: 7
+          retention-days: 14
+          if-no-files-found: ignore
       
       - name: Upload accessibility reports
         uses: actions/upload-artifact@v6
@@ -370,7 +371,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: test-report-html
-          path: Cypress/reports/merged/test-report.html
+          path: Cypress/reports/merged
           retention-days: 30
           if-no-files-found: ignore
       

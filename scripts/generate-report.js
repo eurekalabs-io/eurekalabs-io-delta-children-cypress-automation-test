@@ -101,6 +101,8 @@ async function generateReport() {
     
     console.log('✅ Report generated successfully!');
     console.log(`📄 Report location: ${htmlReport[0]}`);
+
+    buildScreenshotGallery();
     
     // Generate summary markdown for GitHub Actions
     generateMarkdownSummary(mergedResults);
@@ -110,6 +112,85 @@ async function generateReport() {
     console.error('❌ Error generating report:', error.message);
     throw error;
   }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function collectScreenshots(dir, acc = []) {
+  if (!fs.existsSync(dir)) return acc;
+  fs.readdirSync(dir).forEach((item) => {
+    const fullPath = path.join(dir, item);
+    const stat = fs.statSync(fullPath);
+    if (stat.isDirectory()) {
+      collectScreenshots(fullPath, acc);
+    } else if (/\.(png|jpe?g)$/i.test(item)) {
+      acc.push(fullPath);
+    }
+  });
+  return acc;
+}
+
+/**
+ * Copies Cypress screenshots next to the HTML report and writes a page that
+ * shows every image. The workflow uploads this folder as one artifact.
+ */
+function buildScreenshotGallery() {
+  const screenshotsRoot = path.join(__dirname, '..', 'Cypress', 'screenshots');
+  const galleryDir = path.join(OUTPUT_DIR, 'screenshots');
+  ensureDir(galleryDir);
+
+  const shots = collectScreenshots(screenshotsRoot);
+  const items = shots.map((src) => {
+    const specFolder = path.basename(path.dirname(src)).replace(/[^a-z0-9._-]+/gi, '-');
+    const fileName = `${specFolder}--${path.basename(src)}`.replace(/\s+/g, '-');
+    fs.copyFileSync(src, path.join(galleryDir, fileName));
+    const label = fileName
+      .replace(/\.(png|jpe?g)$/i, '')
+      .replace(/--/g, ' — ')
+      .replace(/[-_]+/g, ' ');
+    return { fileName, label };
+  });
+
+  const cards = items.length
+    ? items.map((item) => `
+      <figure>
+        <figcaption>${escapeHtml(item.label)}</figcaption>
+        <a href="screenshots/${escapeHtml(item.fileName)}">
+          <img src="screenshots/${escapeHtml(item.fileName)}" alt="${escapeHtml(item.label)}">
+        </a>
+      </figure>`).join('\n')
+    : '<p>No screenshots were captured for this run.</p>';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cypress screenshots</title>
+  <style>
+    body { font-family: Georgia, serif; margin: 24px; color: #1f2933; background: #f7f5f2; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    p { max-width: 720px; line-height: 1.5; }
+    figure { margin: 28px 0; background: white; padding: 16px; border: 1px solid #e4e0d8; }
+    figcaption { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; margin-bottom: 12px; }
+    img { max-width: 100%; height: auto; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Cypress screenshots</h1>
+  <p>${items.length} image${items.length === 1 ? '' : 's'} from this run. Bundle totals are named bundle-total. Cart totals, taken after Captain protection is turned off, are named cart-subtotal.</p>
+  ${cards}
+</body>
+</html>`;
+
+  const galleryFile = path.join(OUTPUT_DIR, 'screenshots.html');
+  fs.writeFileSync(galleryFile, html, 'utf8');
+  console.log(`🖼️ Screenshot gallery: ${galleryFile} (${items.length} image(s))`);
 }
 
 /**

@@ -1193,8 +1193,59 @@ function isCribsCheckoutSuite(suite) {
   return file.includes('cribscheckout') || title.includes('cribs checkout');
 }
 
+function loadSelectedProducts() {
+  const file = path.join(__dirname, '..', 'Cypress', 'reports', 'selected-products.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.log(`⚠️ Could not read selected products: ${error.message}`);
+    return [];
+  }
+}
+
+function titleWithoutProduct(title) {
+  return String(title || '').replace(/\s+\|\s+Product:\s+.+$/i, '').trim();
+}
+
+function productFromTest(test, suite, records) {
+  if (!test) return null;
+
+  const sources = [test.title, test.fullTitle];
+  if (Array.isArray(test.context)) {
+    test.context.forEach((entry) => {
+      if (!entry) return;
+      if (typeof entry === 'string') sources.push(entry);
+      else if (typeof entry.value === 'string') sources.push(entry.value);
+      else if (entry.message) sources.push(String(entry.message));
+    });
+  }
+
+  const inline = sources.filter(Boolean).join('\n').match(/Product:\s*(.+)/);
+  if (inline) return inline[1].split('\n')[0].trim();
+
+  const title = titleWithoutProduct(test.fullTitle || test.title || '');
+  const file = String((suite && (suite.file || suite.filePath)) || '').toLowerCase();
+  const matches = (records || []).filter((record) => {
+    const spec = String(record.spec || '').toLowerCase();
+    const specOk = !spec || !file || file.includes(spec) || spec.includes(path.basename(file));
+    const recordTitle = titleWithoutProduct(record.test || '');
+    if (!specOk || !recordTitle) return false;
+    return title.includes(recordTitle) || recordTitle.includes(title);
+  });
+  const hit = matches[matches.length - 1];
+  if (!hit || !hit.product) return null;
+  return hit.path ? `${hit.product} — ${hit.path}` : hit.product;
+}
+
+function productLine(test, suite, records) {
+  const product = productFromTest(test, suite, records);
+  return product ? `  └─ Product: ${product}\n` : '';
+}
+
 function scenarioForCribsTest(title) {
-  const text = String(title || '').toLowerCase();
+  const text = titleWithoutProduct(title).toLowerCase();
   if (text.includes('add-ons') || text.includes('addons')) return CRIBS_CHECKOUT_SCENARIOS[1];
   if (text.includes('only warranty')) return CRIBS_CHECKOUT_SCENARIOS[2];
   if (text.includes('complete checkout')) return CRIBS_CHECKOUT_SCENARIOS[0];
@@ -1211,7 +1262,7 @@ function cribsScenarioLabel(test) {
 /**
  * One English title per Cribs Checkout scenario: status, name, and duration.
  */
-function formatCribsCheckoutBreakdown(suite) {
+function formatCribsCheckoutBreakdown(suite, records) {
   const tests = (suite && suite.tests) || [];
   const used = new Set();
   let block = '';
@@ -1220,6 +1271,7 @@ function formatCribsCheckoutBreakdown(suite) {
     const emoji = !test ? '⏸️' : test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
     const duration = test && test.duration ? ` (${formatDuration(test.duration)})` : '';
     block += `${emoji} *${scenario.name}*${duration}\n`;
+    if (test) block += productLine(test, suite, records);
     if (test && test.state === 'failed' && test.err) {
       const errorMsg = test.err.message || test.err.estack || 'Unknown error';
       const shortError = errorMsg.length > 150 ? errorMsg.substring(0, 150) + '...' : errorMsg;
@@ -1240,7 +1292,8 @@ function formatCribsCheckoutBreakdown(suite) {
     if (used.has(index)) return;
     const emoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
     const duration = test.duration ? ` (${formatDuration(test.duration)})` : '';
-    block += `${emoji} *${cribsScenarioLabel(test)}*${duration}\n`;
+    block += `${emoji} *${titleWithoutProduct(cribsScenarioLabel(test))}*${duration}\n`;
+    block += productLine(test, suite, records);
   });
 
   return block;
@@ -1262,6 +1315,7 @@ function formatTestDetails(suites, results = null) {
   });
 
   const MAX_LENGTH = 6000; // Increased limit for more details
+  const selectedProducts = loadSelectedProducts();
   let details = '';
   let totalTestsShown = 0;
   let totalTestsSkipped = 0;
@@ -1311,7 +1365,7 @@ function formatTestDetails(suites, results = null) {
 
     // Cribs Checkout lists one English title per scenario, without the step list.
     if (isCribsCheckoutSuite(suite)) {
-      const breakdown = formatCribsCheckoutBreakdown(suite);
+      const breakdown = formatCribsCheckoutBreakdown(suite, selectedProducts);
       if (details.length + breakdown.length <= MAX_LENGTH) {
         details += breakdown;
       } else {
@@ -1330,9 +1384,10 @@ function formatTestDetails(suites, results = null) {
         const testStatusEmoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
         // Prioritize fullTitle over title to show complete test path including suite name
         // fullTitle typically includes the suite name, while title might only have the test name
-        const testTitle = test.fullTitle || test.title || 'Unnamed Test';
+        const testTitle = titleWithoutProduct(test.fullTitle || test.title || 'Unnamed Test');
         const testDuration = test.duration ? ` (${formatDuration(test.duration)})` : '';
         const testLine = `${testStatusEmoji} *${testTitle}*${testDuration}\n`;
+        const selectedProductLine = productLine(test, suite, selectedProducts);
         
         // Check if adding this test would exceed limit
         if (details.length + testLine.length > MAX_LENGTH) {
@@ -1341,6 +1396,9 @@ function formatTestDetails(suites, results = null) {
         }
         
         details += testLine;
+        if (selectedProductLine && details.length + selectedProductLine.length <= MAX_LENGTH) {
+          details += selectedProductLine;
+        }
         totalTestsShown++;
         
         // Extract and show accessibility violations if present
@@ -1660,6 +1718,11 @@ function createSlackMessage(summary, results) {
         {
           title: '📊 View Full HTML Report',
           value: `<${artifactUrl}|Download Complete Report>`,
+          short: false
+        },
+        {
+          title: '🖼️ Screenshots',
+          value: `<${artifactUrl}|Download cypress-screenshots, or open screenshots.html inside test-report-html>`,
           short: false
         },
         {

@@ -82,6 +82,7 @@ describe("Cribs Checkout Suite", () => {
     this.test.title = "Cribs Checkout - Add-ons and save warranty";
     cy.viewport(1050, 818);
     cy.visit(GROW_WITH_ME_PDP_URL);
+    cy.recordSelectedProduct(GROW_WITH_ME_PDP_URL);
     cy.acceptCookieBannerIfPresent();
     cy.url({ timeout: 45000 }).should(
       "include",
@@ -113,6 +114,7 @@ describe("Cribs Checkout Suite", () => {
     this.test.title = "Cribs Checkout - Only warranty";
     cy.viewport(1050, 818);
     cy.visit(GROW_WITH_ME_PDP_URL);
+    cy.recordSelectedProduct(GROW_WITH_ME_PDP_URL);
     cy.acceptCookieBannerIfPresent();
     cy.url({ timeout: 45000 }).should(
       "include",

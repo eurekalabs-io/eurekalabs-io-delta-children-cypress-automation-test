@@ -41,6 +41,7 @@ describe('Nursery Sets Collection Suite', () => {
     it(`should select nursery set for ${data.category} - ${data.subcategory}`, function() {
       // Test context for better reporting
       this.test.title = `Nursery Sets Collection Suite - should select nursery set for ${data.category} - ${data.subcategory}`;
+      cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
       // Verify URL only if we're not already in the cart
       // After adding products, the URL may change to /cart
