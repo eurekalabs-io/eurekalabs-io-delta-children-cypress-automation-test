@@ -53,6 +53,8 @@ describe('Bundle builder PLP — swatch and variant selection per product', () =
       if (buttonsByClass.length > 0) {
         const buttons = buttonsByClass.toArray();
         const randomIndex = Math.floor(Math.random() * buttons.length);
+        const href = buttons[randomIndex].getAttribute('href') || buttons[randomIndex].href;
+        if (href) cy.recordSelectedProduct(href);
         cy.wrap(buttons[randomIndex]).click({ force: true });
         cy.log(`"Create your set" button clicked (${randomIndex + 1} of ${buttons.length})`);
         return;
@@ -66,6 +68,8 @@ describe('Bundle builder PLP — swatch and variant selection per product', () =
       if ($allButtons.length > 0) {
         const buttons = $allButtons.toArray();
         const randomIndex = Math.floor(Math.random() * buttons.length);
+        const href = buttons[randomIndex].getAttribute('href') || buttons[randomIndex].href;
+        if (href && String(href).includes('/products/')) cy.recordSelectedProduct(href);
         cy.wrap(buttons[randomIndex]).click({ force: true });
         cy.log(`Fallback set/bundle button clicked (${randomIndex + 1} of ${buttons.length})`);
       } else {
@@ -87,6 +91,7 @@ describe('Bundle builder PLP — swatch and variant selection per product', () =
     it(`should change variants via swatches for each bundle PLP product — ${data.category} / ${data.subcategory}`, function () {
       this.test.title =
         `Bundle PLP — ${data.category} / ${data.subcategory}: validate swatch selection and variant updates on the builder list`;
+      cy.attachSelectedProduct();
 
       cy.log(`Fixture ${index + 1} of ${sets.length}: ${data.category} — ${data.subcategory}`);
 

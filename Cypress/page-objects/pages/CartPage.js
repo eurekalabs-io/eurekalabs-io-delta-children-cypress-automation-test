@@ -79,26 +79,69 @@ export default class CartPage extends BasePage {
     });
   }
 
+  /**
+   * Captain Shipping Protection is checked by default on the cart and adds
+   * its fee to the subtotal. The bundle total does not include that fee.
+   */
+  static uncheckCaptainProtection() {
+    cy.get('#captain-checkbox-label', { includeShadowDom: true, timeout: 20000 })
+      .should('exist')
+      .then(($label) => {
+        const forId = $label.attr('for');
+        const inputSelector = forId && /^[A-Za-z][\w:-]*$/.test(forId) ? `#${forId}` : null;
+        const $input = inputSelector
+          ? Cypress.$(inputSelector)
+          : $label.find('input[type="checkbox"]');
+        const checked = $input.length
+          ? $input.is(':checked')
+          : $label.attr('aria-checked') !== 'false';
+
+        if (!checked) {
+          cy.log('Captain protection is already off');
+          return;
+        }
+
+        cy.log('Captain protection is on by default. Turning it off so the cart total matches the bundle.');
+        cy.get('#captain-checkbox-label', { includeShadowDom: true }).click({ force: true });
+
+        if (inputSelector) {
+          cy.get(inputSelector, { includeShadowDom: true, timeout: 10000 }).should('not.be.checked');
+        }
+      });
+  }
+
+  static saveReviewScreenshot(step) {
+    const slug = Cypress.env('selectedProductSlug') || 'product';
+    const safe = String(slug).replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').slice(0, 80);
+    cy.screenshot(`${step}--${safe}`, { capture: 'fullPage', overwrite: true });
+  }
+
   /** Cart page Subtotal must match the total captured before Proceed to Cart. */
   static assertCartSubtotal(expectedPrice) {
     const expected = toMoney(expectedPrice);
+    const product = Cypress.env('selectedProductName');
+    const label = product ? `cart page bundle total for ${product}` : 'cart page bundle total';
     cy.get('.cart-form__header .cart__subtotal-sum', { timeout: 20000 }).should(($sums) => {
       const rendered = $sums.toArray().filter(isRenderedCartPrice);
       expect(rendered, 'rendered cart subtotal').to.have.length.greaterThan(0);
-      expect(toMoney(rendered[0].textContent), 'cart page bundle total').to.eq(expected);
+      expect(toMoney(rendered[0].textContent), label).to.eq(expected);
     });
   }
 
   /**
    * Reads the add-ons total, then clicks Proceed to Cart and checks that
-   * the cart page shows the same amount.
+   * the cart page shows the same amount. Captain protection is turned off
+   * first because it is checked by default and is not part of the bundle total.
    */
   static proceedToCartComparingBundlePrice() {
     this.captureBundleTotalBeforeProceed().as('bundleTotalBeforeCart');
+    this.saveReviewScreenshot('bundle-total');
     this.proceedToCart();
     cy.url({ timeout: 45000 }).should('include', '/cart');
+    this.uncheckCaptainProtection();
     cy.get('@bundleTotalBeforeCart').then((expected) => {
       this.assertCartSubtotal(expected);
+      this.saveReviewScreenshot('cart-subtotal');
     });
   }
 
@@ -155,6 +198,7 @@ export default class CartPage extends BasePage {
     cy.visit('/cart');
     cy.acceptCookieBannerIfPresent();
     cy.get('body', { timeout: 30000 }).should('exist');
+    this.uncheckCaptainProtection();
   }
 
   /**

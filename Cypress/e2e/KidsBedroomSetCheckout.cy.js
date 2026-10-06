@@ -40,6 +40,7 @@ describe('Kids Bedroom Set Checkout Suite', () => {
   sets.forEach((data, index) => {
     it(`Kids-Bedroom-Set-Checkout ${data.category} - ${data.subcategory}`, function() {
       this.test.title = `Kids Bedroom Set Checkout - Complete checkout ${data.category} - ${data.subcategory}`;
+      cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
 
       cy.url().then((currentUrl) => {

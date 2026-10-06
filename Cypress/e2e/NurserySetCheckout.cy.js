@@ -40,6 +40,7 @@ describe('Nursery Set Checkout Suite', () => {
   sets.forEach((data, index) => {
     it(`Complete-Checkout-Process ${data.category} - ${data.subcategory}`, function() {
       this.test.title = `Nursery Set Checkout - Complete order process ${data.category} - ${data.subcategory}`;
+      cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
 
       cy.url().then((currentUrl) => {

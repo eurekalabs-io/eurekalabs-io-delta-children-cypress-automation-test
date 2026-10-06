@@ -48,7 +48,12 @@ export default class ProductsListCribsBestSellers extends BasePage {
       cy.log(
         `Random product ${picked.index + 1} selected (${picked.count} swatch(es), ${eligible.length} eligible).`
       );
-      return cy.wrap(picked);
+      return cy.get('body').then(($body) => {
+        const link = $body.find(PRODUCT_TITLE_LINK).get(picked.index);
+        const href = link && (link.getAttribute('href') || link.href);
+        if (!href) return cy.wrap(picked);
+        return cy.recordSelectedProduct(href).then(() => picked);
+      });
     });
   }
 
@@ -115,8 +120,9 @@ export default class ProductsListCribsBestSellers extends BasePage {
       .click({ force: true })
       .then(() => {
         BasePage.pause(1500);
-        cy.url({ timeout: 15000 }).should('include', '/products/');
-        return cy.get('body', { timeout: 15000 });
+        return cy.url({ timeout: 15000 }).should('include', '/products/').then((url) => {
+          return cy.recordSelectedProduct(url).then(() => cy.get('body', { timeout: 15000 }));
+        });
       })
       .then(($body) => {
         const variantCount = countPdpSwatchOptions($body);

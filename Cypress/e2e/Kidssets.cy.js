@@ -42,6 +42,8 @@ describe('Kids Sets Collection Suite', () => {
         const buttons = buttonsByClass.toArray();
         const randomIndex = Math.floor(Math.random() * buttons.length);
         const randomButton = buttons[randomIndex];
+        const href = randomButton.getAttribute('href') || randomButton.href;
+        if (href) cy.recordSelectedProduct(href);
         cy.wrap(randomButton).click({ force: true });
         cy.log(`"Create your set" button randomly selected (${randomIndex + 1} of ${buttons.length})`);
         
@@ -57,6 +59,8 @@ describe('Kids Sets Collection Suite', () => {
         if ($allButtons.length > 0) {
           const buttons = $allButtons.toArray();
           const randomIndex = Math.floor(Math.random() * buttons.length);
+          const href = buttons[randomIndex].getAttribute('href') || buttons[randomIndex].href;
+          if (href && String(href).includes('/products/')) cy.recordSelectedProduct(href);
           cy.wrap(buttons[randomIndex]).click({ force: true });
           cy.log(`"Create your set" button selected by text (${randomIndex + 1} of ${buttons.length})`);
           
@@ -93,6 +97,7 @@ describe('Kids Sets Collection Suite', () => {
     it(`should select kids set for ${data.category} - ${data.subcategory}`, function() {
       // Test context for better reporting
       this.test.title = `Kids Sets Collection Suite - should select kids set for ${data.category} - ${data.subcategory}`;
+      cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
       // Verify URL and handle different cases
       cy.url().then((currentUrl) => {

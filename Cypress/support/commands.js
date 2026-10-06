@@ -360,6 +360,86 @@ Cypress.Commands.add('stubStorefrontNoise', () => {
   });
 });
 
+function productLabelFromHref(href) {
+  const raw = String(href || '');
+  const noQuery = raw.split('?')[0].split('#')[0];
+  const match = noQuery.match(/\/products\/([^/]+)\/?$/);
+  const slug = match
+    ? decodeURIComponent(match[1])
+    : (noQuery.split('/').filter(Boolean).pop() || 'unknown-product');
+  const name = slug
+    .replace(/-delta-children$/i, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  return { slug, name, path: `/products/${slug}` };
+}
+
+function currentMochaTest() {
+  const runnable = cy.state('runnable');
+  if (!runnable) return null;
+  if (runnable.type === 'test') return runnable;
+  const ctx = runnable.ctx || {};
+  return ctx.currentTest || ctx.test || null;
+}
+
+// Stores the product chosen for this run on the Mocha test so Slack can name it.
+Cypress.Commands.add('recordSelectedProduct', (href) => {
+  const { slug, name, path: productPath } = productLabelFromHref(href);
+  const note = `Product: ${name} — ${productPath}`;
+
+  Cypress.env('selectedProductSlug', slug);
+  Cypress.env('selectedProductName', name);
+  Cypress.env('selectedProductPath', productPath);
+
+  const mochaTest = currentMochaTest();
+  const baseTitle = mochaTest
+    ? String(mochaTest.title).replace(/\s+\|\s+Product:\s+.+$/, '')
+    : ((Cypress.currentTest && Cypress.currentTest.title) || '');
+
+  if (mochaTest) {
+    mochaTest.title = `${baseTitle} | ${note}`;
+    if (!Array.isArray(mochaTest.context)) mochaTest.context = [];
+    mochaTest.context.push(note);
+  }
+
+  cy.task('recordSelectedProduct', {
+    spec: Cypress.spec && Cypress.spec.name,
+    test: baseTitle,
+    product: name,
+    path: productPath,
+  }, { log: false });
+
+  cy.log(note);
+});
+
+// beforeEach picks the product before the spec assigns its report title.
+// Call this immediately after `this.test.title = ...` so Slack keeps the name.
+Cypress.Commands.add('attachSelectedProduct', () => {
+  const name = Cypress.env('selectedProductName');
+  const productPath = Cypress.env('selectedProductPath');
+  if (!name || !productPath) return;
+
+  const note = `Product: ${name} — ${productPath}`;
+  const mochaTest = currentMochaTest();
+  const baseTitle = mochaTest
+    ? String(mochaTest.title).replace(/\s+\|\s+Product:\s+.+$/, '')
+    : '';
+
+  if (mochaTest) {
+    mochaTest.title = `${baseTitle} | ${note}`;
+    if (!Array.isArray(mochaTest.context)) mochaTest.context = [];
+    if (!mochaTest.context.includes(note)) mochaTest.context.push(note);
+  }
+
+  cy.task('recordSelectedProduct', {
+    spec: Cypress.spec && Cypress.spec.name,
+    test: baseTitle,
+    product: name,
+    path: productPath,
+  }, { log: false });
+});
+
 // Avoid click-navigation: Cypress waits for `load`, which Shopify often never fires.
 Cypress.Commands.add('openRandomCreateSet', () => {
   const selector = 'a.js-create-set-button[href*="/products/"]';
@@ -377,6 +457,7 @@ Cypress.Commands.add('openRandomCreateSet', () => {
         throw new Error('Create your set button has no href');
       }
 
+      cy.recordSelectedProduct(href);
       cy.visit(href, { failOnStatusCode: false });
       cy.url({ timeout: 45000 }).should('include', '/products/');
       cy.acceptCookieBannerIfPresent();
