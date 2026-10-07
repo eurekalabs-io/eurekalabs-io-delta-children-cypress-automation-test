@@ -1240,8 +1240,21 @@ function productFromTest(test, suite, records) {
 }
 
 function productLine(test, suite, records) {
-  const product = productFromTest(test, suite, records);
-  return product ? `  └─ Product: ${product}\n` : '';
+  const product = test ? productFromTest(test, suite, records) : null;
+  return `  └─ Product: ${product || 'none selected'}\n`;
+}
+
+function chunkFullText(text, size = 39000) {
+  const chunks = [];
+  let rest = String(text || '');
+  while (rest.length > size) {
+    let cut = rest.lastIndexOf('\n', size);
+    if (cut < 1) cut = size;
+    chunks.push(rest.slice(0, cut));
+    rest = rest.slice(cut + 1);
+  }
+  if (rest.length) chunks.push(rest);
+  return chunks.length ? chunks : [''];
 }
 
 function scenarioForCribsTest(title) {
@@ -1271,11 +1284,10 @@ function formatCribsCheckoutBreakdown(suite, records) {
     const emoji = !test ? '⏸️' : test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
     const duration = test && test.duration ? ` (${formatDuration(test.duration)})` : '';
     block += `${emoji} *${scenario.name}*${duration}\n`;
-    if (test) block += productLine(test, suite, records);
+    block += productLine(test, suite, records);
     if (test && test.state === 'failed' && test.err) {
       const errorMsg = test.err.message || test.err.estack || 'Unknown error';
-      const shortError = errorMsg.length > 150 ? errorMsg.substring(0, 150) + '...' : errorMsg;
-      block += `  └─ Error: ${shortError}\n`;
+      block += `  └─ Error: ${errorMsg}\n`;
     }
   };
 
@@ -1314,11 +1326,8 @@ function formatTestDetails(suites, results = null) {
     console.log(`   Suite ${idx + 1}: "${suite.title}" - ${suite.total || 0} tests (file: ${suite.file || 'N/A'})`);
   });
 
-  const MAX_LENGTH = 6000; // Increased limit for more details
   const selectedProducts = loadSelectedProducts();
   let details = '';
-  let totalTestsShown = 0;
-  let totalTestsSkipped = 0;
   
   // Add test files executed section
   // Always try both methods and merge results
@@ -1354,26 +1363,12 @@ function formatTestDetails(suites, results = null) {
     const statusEmoji = suite.failed > 0 ? '❌' : suite.passed > 0 ? '✅' : '⏸️';
     const suiteHeader = `\n*${statusEmoji} ${suite.title}*\n`;
     const suiteSummary = `Tests: ${suite.total} | ✅ ${suite.passed} | ❌ ${suite.failed} | ⏸️ ${suite.pending} | ⏱️ ${formatDuration(suite.duration)}\n`;
-    
-    // Check if adding suite header would exceed limit
-    if (details.length + suiteHeader.length + suiteSummary.length > MAX_LENGTH) {
-      totalTestsSkipped += suite.total;
-      return;
-    }
-    
+
     details += suiteHeader + suiteSummary;
 
     // Cribs Checkout lists one English title per scenario, without the step list.
     if (isCribsCheckoutSuite(suite)) {
-      const breakdown = formatCribsCheckoutBreakdown(suite, selectedProducts);
-      if (details.length + breakdown.length <= MAX_LENGTH) {
-        details += breakdown;
-      } else {
-        const room = MAX_LENGTH - details.length;
-        if (room > 80) {
-          details += breakdown.substring(0, room) + '\n';
-        }
-      }
+      details += formatCribsCheckoutBreakdown(suite, selectedProducts);
       return;
     }
     
@@ -1387,19 +1382,8 @@ function formatTestDetails(suites, results = null) {
         const testTitle = titleWithoutProduct(test.fullTitle || test.title || 'Unnamed Test');
         const testDuration = test.duration ? ` (${formatDuration(test.duration)})` : '';
         const testLine = `${testStatusEmoji} *${testTitle}*${testDuration}\n`;
-        const selectedProductLine = productLine(test, suite, selectedProducts);
-        
-        // Check if adding this test would exceed limit
-        if (details.length + testLine.length > MAX_LENGTH) {
-          totalTestsSkipped++;
-          return;
-        }
-        
         details += testLine;
-        if (selectedProductLine && details.length + selectedProductLine.length <= MAX_LENGTH) {
-          details += selectedProductLine;
-        }
-        totalTestsShown++;
+        details += productLine(test, suite, selectedProducts);
         
         // Extract and show accessibility violations if present
         const accessibilityViolations = extractAccessibilityViolations(test);
@@ -1429,21 +1413,15 @@ function formatTestDetails(suites, results = null) {
                 violationText += `       *Rule:* ${detail.ruleId || 'N/A'}\n`;
                 
                 if (detail.selectors) {
-                  // Truncate long selectors
-                  const selector = detail.selectors.length > 80 ? detail.selectors.substring(0, 80) + '...' : detail.selectors;
-                  violationText += `       *Selector:* \`${selector}\`\n`;
+                  violationText += `       *Selector:* \`${detail.selectors}\`\n`;
                 }
                 
                 if (detail.description) {
-                  // Truncate long descriptions
-                  const desc = detail.description.length > 150 ? detail.description.substring(0, 150) + '...' : detail.description;
-                  violationText += `       *Description:* ${desc}\n`;
+                  violationText += `       *Description:* ${detail.description}\n`;
                 }
                 
                 if (detail.tags) {
-                  // Show first few tags only
-                  const tags = detail.tags.split(',').slice(0, 3).join(', ');
-                  violationText += `       *Tags:* ${tags}${detail.tags.split(',').length > 3 ? '...' : ''}\n`;
+                  violationText += `       *Tags:* ${detail.tags}\n`;
                 }
                 
                 if (detail.moreInfo) {
@@ -1453,29 +1431,14 @@ function formatTestDetails(suites, results = null) {
             }
             
             violationText += '\n';
-            
-            // Check if adding this would exceed limit
-            if (details.length + violationText.length <= MAX_LENGTH) {
-              details += violationText;
-            } else {
-              // Add truncated version
-              const truncatedText = `  📊 *Accessibility Results:* ${violation.critical + violation.serious + violation.moderate + violation.minor} violation(s) found (see logs for details)\n`;
-              if (details.length + truncatedText.length <= MAX_LENGTH) {
-                details += truncatedText;
-              }
-            }
+            details += violationText;
           });
         }
         
         // Show error message for failed tests
         if (test.state === 'failed' && test.err) {
           const errorMsg = test.err.message || test.err.estack || 'Unknown error';
-          const shortError = errorMsg.length > 150 ? errorMsg.substring(0, 150) + '...' : errorMsg;
-          const errorLine = `  └─ Error: ${shortError}\n`;
-          
-          if (details.length + errorLine.length <= MAX_LENGTH) {
-            details += errorLine;
-          }
+          details += `  └─ Error: ${errorMsg}\n`;
         }
         
         // Show subtests if they exist (check for nested test structure)
@@ -1483,28 +1446,14 @@ function formatTestDetails(suites, results = null) {
           test.tests.forEach(subtest => {
             const subtestStatusEmoji = subtest.state === 'passed' ? '✅' : subtest.state === 'failed' ? '❌' : '⏸️';
             // Prioritize fullTitle over title to show complete test path
-            const subtestTitle = subtest.fullTitle || subtest.title || 'Unnamed Subtest';
+            const subtestTitle = titleWithoutProduct(subtest.fullTitle || subtest.title || 'Unnamed Subtest');
             const subtestDuration = subtest.duration ? ` (${formatDuration(subtest.duration)})` : '';
-            const subtestLine = `  ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
+            details += `  ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
+            details += productLine(subtest, suite, selectedProducts).replace('  └─', '    └─');
             
-            // Check if adding this subtest would exceed limit
-            if (details.length + subtestLine.length > MAX_LENGTH) {
-              totalTestsSkipped++;
-              return;
-            }
-            
-            details += subtestLine;
-            totalTestsShown++;
-            
-            // Show error message for failed subtests
             if (subtest.state === 'failed' && subtest.err) {
               const subtestErrorMsg = subtest.err.message || subtest.err.estack || 'Unknown error';
-              const shortSubtestError = subtestErrorMsg.length > 150 ? subtestErrorMsg.substring(0, 150) + '...' : subtestErrorMsg;
-              const subtestErrorLine = `    └─ Error: ${shortSubtestError}\n`;
-              
-              if (details.length + subtestErrorLine.length <= MAX_LENGTH) {
-                details += subtestErrorLine;
-              }
+              details += `    └─ Error: ${subtestErrorMsg}\n`;
             }
           });
         }
@@ -1515,26 +1464,14 @@ function formatTestDetails(suites, results = null) {
             if (hook.title && hook.title !== '') {
               const hookStatusEmoji = hook.state === 'passed' ? '✅' : hook.state === 'failed' ? '❌' : '⏸️';
               const hookTitle = hook.title;
-              const hookLine = `  ${hookStatusEmoji} *${hookTitle}*\n`;
-              
-              if (details.length + hookLine.length <= MAX_LENGTH) {
-                details += hookLine;
-                totalTestsShown++;
-              } else {
-                totalTestsSkipped++;
-              }
+              details += `  ${hookStatusEmoji} *${hookTitle}*\n`;
             }
           });
         }
       });
     }
   });
-  
-  // Add note if some tests were skipped due to length limit
-  if (totalTestsSkipped > 0) {
-    details += `\n_...y ${totalTestsSkipped} test(s) adicional(es) (ver reporte completo para detalles)_\n`;
-  }
-  
+
   return details;
 }
 
@@ -1625,9 +1562,7 @@ function createSlackMessage(summary, results) {
   
   // Add test files if available
   if (testFiles.length > 0) {
-    const filesValue = testFiles.length <= 3 
-      ? testFiles.join(', ') 
-      : `${testFiles.slice(0, 3).join(', ')}... (+${testFiles.length - 3} more)`;
+    const filesValue = testFiles.join(', ');
     fields.push({
       title: 'Test Files',
       value: `*${filesValue}*`,
@@ -1693,23 +1628,6 @@ function createSlackMessage(summary, results) {
     }
   ];
 
-  // Add detailed test results as a second attachment if we have results
-  if (hasResults && suites.length > 0 && testDetails && testDetails.trim().length > 0) {
-    // Truncate if too long (Slack text field limit is 8000 chars, but we'll use 7000 to be safe)
-    const maxTextLength = 7000;
-    let finalTestDetails = testDetails;
-    if (testDetails.length > maxTextLength) {
-      finalTestDetails = testDetails.substring(0, maxTextLength) + '\n\n_... (mensaje truncado debido a longitud)_';
-    }
-    
-    attachments.push({
-      color: color,
-      title: '📋 Detailed Test Results',
-      text: finalTestDetails,
-      mrkdwn_in: ['text']
-    });
-  }
-
   // Add links attachment
   attachments.push({
       color: colors.info,
@@ -1738,6 +1656,10 @@ function createSlackMessage(summary, results) {
     icon_emoji: ':robot_face:',
     attachments: attachments
   };
+
+  if (hasResults && testDetails && testDetails.trim().length > 0) {
+    message.text = testDetails;
+  }
 
   return message;
 }
@@ -1913,10 +1835,21 @@ async function main() {
   if (SLACK_WEBHOOK_URL) {
     console.log('📤 Sending notification to Slack...');
     const message = createSlackMessage(summary, results);
+    const detailChunks = chunkFullText(message.text || '', 39000);
+    const posts = detailChunks.length
+      ? detailChunks.map((chunk, index) => ({
+          username: message.username,
+          icon_emoji: message.icon_emoji,
+          text: chunk,
+          attachments: index === 0 ? message.attachments : undefined
+        }))
+      : [message];
     
     try {
-      await sendToSlack(message);
-      console.log('✅ Successfully sent notification to Slack');
+      for (const post of posts) {
+        await sendToSlack(post);
+      }
+      console.log(`✅ Successfully sent notification to Slack (${posts.length} message(s), ${ (message.text || '').length } characters)`);
     } catch (error) {
       console.error('❌ Failed to send Slack notification:', error.message);
       console.error('Error details:', error);
