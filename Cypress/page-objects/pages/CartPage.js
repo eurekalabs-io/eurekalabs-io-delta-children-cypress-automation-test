@@ -80,34 +80,61 @@ export default class CartPage extends BasePage {
   }
 
   /**
-   * Captain Shipping Protection is checked by default on the cart and adds
-   * its fee to the subtotal. The bundle total does not include that fee.
+   * Captain Shipping Protection is checked by default when its widget renders,
+   * and that fee is not part of the bundle total. The live widget is either
+   * #captain-checkbox-label or #tm_switch_btn, and some carts never mount it.
+   * Missing the widget must not fail the test.
    */
   static uncheckCaptainProtection() {
-    cy.get('#captain-checkbox-label', { includeShadowDom: true, timeout: 20000 })
-      .should('exist')
-      .then(($label) => {
-        const forId = $label.attr('for');
-        const inputSelector = forId && /^[A-Za-z][\w:-]*$/.test(forId) ? `#${forId}` : null;
-        const $input = inputSelector
-          ? Cypress.$(inputSelector)
-          : $label.find('input[type="checkbox"]');
-        const checked = $input.length
-          ? $input.is(':checked')
-          : $label.attr('aria-checked') !== 'false';
+    const selector = [
+      '#captain-checkbox-label',
+      '#tm_switch_btn',
+      'input[aria-label="Shipping protection checkbox"]',
+      'input[aria-label="Shipping protection switch"]',
+    ].join(', ');
 
+    const findCaptainBoxes = (root) => {
+      if (!root || !root.querySelectorAll) return [];
+      const found = Array.from(root.querySelectorAll(selector));
+      root.querySelectorAll('*').forEach((el) => {
+        if (el.shadowRoot) found.push(...findCaptainBoxes(el.shadowRoot));
+      });
+      return found;
+    };
+
+    const turnOff = (attemptsLeft) => {
+      cy.document({ log: false }).then((doc) => {
+        const boxes = findCaptainBoxes(doc);
+        const visible = boxes.filter((el) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        const box = visible[0] || boxes[0];
+
+        if (!box && attemptsLeft > 0) {
+          cy.wait(500, { log: false });
+          turnOff(attemptsLeft - 1);
+          return;
+        }
+
+        if (!box) {
+          cy.log('Captain protection checkbox was not on the cart');
+          return;
+        }
+
+        const checked = box.checked || box.getAttribute('aria-checked') === 'true';
         if (!checked) {
           cy.log('Captain protection is already off');
           return;
         }
 
         cy.log('Captain protection is on by default. Turning it off so the cart total matches the bundle.');
-        cy.get('#captain-checkbox-label', { includeShadowDom: true }).click({ force: true });
-
-        if (inputSelector) {
-          cy.get(inputSelector, { includeShadowDom: true, timeout: 10000 }).should('not.be.checked');
-        }
+        cy.wrap(box, { log: false }).click({ force: true }).should('not.be.checked');
       });
+    };
+
+    cy.get('.cart-form__header .cart__subtotal-sum', { timeout: 20000 }).should('exist');
+    turnOff(16);
   }
 
   static saveReviewScreenshot(step) {
