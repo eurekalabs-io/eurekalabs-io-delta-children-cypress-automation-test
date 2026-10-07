@@ -110,6 +110,12 @@ module.exports = defineConfig({
       config.video = false;
       // Enable screenshots for accessibility tests (handled in test)
       config.screenshotOnRunFailure = true;
+      // Cypress 16 only shows `expose` in the browser. --env productPath=...
+      // pins openRandomCreateSet to one set for a local rerun.
+      if (config.env && config.env.productPath) {
+        config.expose = config.expose || {};
+        config.expose.productPath = config.env.productPath;
+      }
       return config;
     },
     baseUrl: 'https://www.deltachildren.com/',

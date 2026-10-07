@@ -441,7 +441,23 @@ Cypress.Commands.add('attachSelectedProduct', () => {
 });
 
 // Avoid click-navigation: Cypress waits for `load`, which Shopify often never fires.
+// Pass --env productPath=/products/slug to rerun one set instead of a random one.
 Cypress.Commands.add('openRandomCreateSet', () => {
+  const pinned = Cypress.env('productPath');
+  if (pinned) {
+    const href = String(pinned).startsWith('http')
+      ? pinned
+      : String(pinned).startsWith('/')
+        ? pinned
+        : `/${pinned}`;
+    cy.log(`Pinned set → ${href}`);
+    cy.recordSelectedProduct(href);
+    cy.visit(href, { failOnStatusCode: false });
+    cy.url({ timeout: 45000 }).should('include', '/products/');
+    cy.acceptCookieBannerIfPresent();
+    return;
+  }
+
   const selector = 'a.js-create-set-button[href*="/products/"]';
 
   cy.get(selector, { timeout: 45000 })
