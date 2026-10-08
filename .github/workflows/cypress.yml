@@ -31,8 +31,22 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
+
+      # El binario de Cypress (~250 MB) se descarga aparte de npm.
+      # Cachearlo evita volver a bajarlo cuando el CDN lo entrega incompleto.
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-binary-${{ runner.os }}-16-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            cypress-binary-${{ runner.os }}-16-
       
       - name: Install dependencies
+        env:
+          # No descargar el binario en el postinstall de npm.
+          # Una descarga truncada (checksum distinto) hacía fallar todo el job.
+          CYPRESS_INSTALL_BINARY: '0'
         run: |
           echo "📦 Installing dependencies..."
           echo "📋 Node version: $(node --version)"
@@ -49,8 +63,6 @@ jobs:
           
           if [ $? -ne 0 ]; then
             echo "❌ npm install failed"
-            echo "📋 Attempting to see what went wrong..."
-            npm install --legacy-peer-deps --no-audit --no-fund --verbose 2>&1 | tail -50
             exit 1
           fi
           
@@ -64,7 +76,7 @@ jobs:
             echo "❌ Cypress not found in node_modules"
             MISSING_DEPS=1
           else
-            echo "✅ Cypress found: $(node_modules/.bin/cypress --version 2>/dev/null || echo 'version check failed')"
+            echo "✅ Cypress package found in node_modules"
           fi
           
           if [ ! -d "node_modules/mochawesome" ]; then
@@ -89,6 +101,24 @@ jobs:
           fi
           
           echo "✅ All critical dependencies verified"
+
+      - name: Install Cypress binary
+        run: |
+          echo "📥 Installing Cypress binary (retries if the CDN returns a truncated file)..."
+          attempt=1
+          max=5
+          until npx cypress install; do
+            if [ "$attempt" -ge "$max" ]; then
+              echo "❌ Cypress binary install failed after $max attempts"
+              exit 1
+            fi
+            echo "⚠️ Attempt $attempt failed (corrupted or truncated download). Clearing cache and retrying..."
+            npx cypress cache clear || true
+            attempt=$((attempt + 1))
+            sleep $((attempt * 5))
+          done
+          npx cypress verify
+          echo "✅ Cypress binary verified: $(npx cypress --version)"
       
       - name: Check if recording is enabled
         id: check-recording
