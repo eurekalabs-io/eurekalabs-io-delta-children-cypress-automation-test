@@ -1,6 +1,7 @@
 import {
   PDP_VARIANT_GROUP_SELECTOR,
   getSecondSwatchTargetsOnPdp,
+  isOutOfStockSwatch,
 } from './pdpVariantHelpers';
 
 // ***********************************************
@@ -62,37 +63,19 @@ Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (s
         if ($visibleFound.length > 0) {
           cy.log(`Visible swatch list found with selector: ${selector}`);
           
-          // Find all available (clickable) components in the swatch list
           return cy.wrap($visibleFound.first()).then(($swatchList) => {
-            // Find all clickable elements: li, button, a, span with swatch class, etc.
-            const allComponents = $swatchList.find('li, button, a, [class*="swatch"], [data-swatch]');
-            const availableComponents = allComponents.filter((i, el) => {
-              // Use the jQuery object from the parent element to create a wrapper for the current element
-              const $elem = $swatchList.constructor(el);
-              const style = window.getComputedStyle(el);
-              // Verify that the element is visible and not disabled
-              return style.visibility !== 'hidden' && 
-                     style.display !== 'none' && 
-                     style.opacity !== '0' &&
-                     $elem.is(':visible') &&
-                     !$elem.is(':disabled') &&
-                     !$elem.hasClass('disabled');
-            });
-            
-            cy.log(`Found ${availableComponents.length} available components in the swatch list`);
-            
-            if (availableComponents.length > 1) {
-              cy.log(`Has ${availableComponents.length} available components, selecting the second one`);
-              
-              // Select the second available component (index 1)
-              const secondComponent = availableComponents.eq(1);
-              cy.wrap(secondComponent).click({ force: true });
-              cy.wait(1500); // Increase wait time for stabilization
-              cy.log(`Second available component selected successfully`);
-            } else if (availableComponents.length === 1) {
-              cy.log(`Only has 1 available component, cannot select second one`);
+            const inStockRows = $swatchList.find('li').filter((_, li) => !isOutOfStockSwatch(li));
+
+            cy.log(`Found ${inStockRows.length} in-stock swatch(es)`);
+
+            if (inStockRows.length > 1) {
+              const $row = inStockRows.eq(1);
+              const $click = $row.find('label, img, a, button, input').first();
+              cy.wrap($click.length ? $click : $row).click({ force: true });
+              cy.wait(1500);
+              cy.log('Selected the second in-stock swatch');
             } else {
-              cy.log(`No available components in the swatch list`);
+              cy.log('No second in-stock swatch to select');
             }
           });
         } else {
@@ -109,14 +92,15 @@ Cypress.Commands.add('findAndSelectSecondSwatch', { prevSubject: 'element' }, (s
   return trySelector(0);
 });
 
-// Select the second swatch inside a given swatch list element if it exists
+// Select the second in-stock swatch inside a given swatch list element if it exists
 Cypress.Commands.add('selectSecondSwatchInList', { prevSubject: 'element' }, (subject) => {
-  const swatchItems = 'li';
-  cy.wrap(subject).children(swatchItems).then(($items) => {
-    if ($items.length > 1) {
-      // Use first() to ensure only one element is selected
-      cy.wrap($items.eq(1)).first().click({ force: true });
+  cy.wrap(subject).children('li').then(($items) => {
+    const inStock = $items.filter((_, el) => !isOutOfStockSwatch(el));
+    if (inStock.length > 1) {
+      cy.wrap(inStock.eq(1)).first().click({ force: true });
+      return;
     }
+    cy.log('No second in-stock swatch to select');
   });
 });
 
@@ -190,15 +174,15 @@ Cypress.Commands.add('selectDifferentVariantOnPDPAndValidateImages', () => {
     cy.get('body', { timeout: 15000 }).then(($body) => {
       const targets = getSecondSwatchTargetsOnPdp($body);
       if (!targets.length) {
-        cy.log('PDP has no variant group with 2+ swatches; need 2+ to select a different variant. Skipping.');
+        cy.log('PDP has no other in-stock variant to select. Skipping.');
         return;
       }
 
       const groupCount = $body.find(PDP_VARIANT_GROUP_SELECTOR).length;
       cy.log(
         groupCount > 1
-          ? `PDP has ${groupCount} variant group(s); selecting the second swatch in ${targets.length} group(s).`
-          : 'Selecting the second swatch on PDP.'
+          ? `PDP has ${groupCount} variant group(s); selecting an in-stock swatch in ${targets.length} group(s).`
+          : 'Selecting an in-stock swatch on PDP.'
       );
 
       let chain = cy.wrap(null);

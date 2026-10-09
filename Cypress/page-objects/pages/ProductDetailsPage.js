@@ -171,7 +171,7 @@ export default class ProductDetailsPage extends BasePage {
     });
   }
 
-  /** Second swatch on a standard crib PDP, then confirm the hero image updates. */
+  /** Next in-stock color on a standard crib PDP, then confirm the hero image updates. */
   static selectDifferentVariantAndValidateImages() {
     cy.selectDifferentVariantOnPDPAndValidateImages();
   }
@@ -186,6 +186,18 @@ export default class ProductDetailsPage extends BasePage {
     cy.intercept('POST', '**/cart/add.js').as('standardAddToCart');
     cy.get('form.main-product-form.regular button[data-submit-button]', { timeout: 20000 })
       .first()
+      .then(($button) => {
+        const soldOut = $button.is(':disabled') || /sold out/i.test($button.text());
+        if (!soldOut) return;
+        cy.log('Current color is sold out. Selecting an in-stock variant before Add To Cart.');
+        cy.selectDifferentVariantOnPDPAndValidateImages();
+      });
+    cy.get('form.main-product-form.regular button[data-submit-button]', { timeout: 20000 })
+      .first()
+      .should(($button) => {
+        const soldOut = $button.is(':disabled') || /sold out/i.test($button.text());
+        expect(soldOut, 'Add To Cart variant is in stock').to.eq(false);
+      })
       .scrollIntoView()
       .click({ force: true });
     cy.wait('@standardAddToCart', { timeout: 30000 }).its('response.statusCode').should('be.oneOf', [200, 201]);

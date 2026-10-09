@@ -1,6 +1,6 @@
 import BasePage from '../BasePage';
 import 'cypress-xpath';
-import { countPdpSwatchOptions } from '../../support/pdpVariantHelpers';
+import { countPdpSwatchOptions, isOutOfStockSwatch } from '../../support/pdpVariantHelpers';
 
 // Selectors for the Best Sellers section on /collections/cribs
 const BEST_SELLERS = '#best-sellers';
@@ -32,6 +32,7 @@ export default class ProductsListCribsBestSellers extends BasePage {
       $products.each((index, product) => {
         const count = Cypress.$(product)
           .find(`${PRODUCT_SWATCHES_LIST} ${SWATCH_ITEM_SELECTOR}`)
+          .filter((_, el) => !isOutOfStockSwatch(el))
           .length;
 
         if (count >= minSwatches) {
@@ -79,22 +80,35 @@ export default class ProductsListCribsBestSellers extends BasePage {
       .get(PRODUCT_ITEM, { timeout: 15000 })
       .eq(productIndex)
       .find(`${PRODUCT_SWATCHES_LIST} ${SWATCH_ITEM_SELECTOR}`)
+      .filter((_, el) => !isOutOfStockSwatch(el))
       .its('length');
   }
 
   /**
-   * Selects the second or third swatch in a product's list.
-   * @param {number} position - 2 = second item, 3 = third item
+   * Selects the second or third in-stock swatch in a product's list.
+   * Out-of-stock colors are skipped, so position 2 is the second color that can be bought.
+   * @param {number} position - 2 = second in-stock item, 3 = third in-stock item
    * @param {number} productIndex - zero-based product index in best-sellers
    */
   static selectSecondOrThirdSwatch(position = 2, productIndex = 0) {
+    const wantedIndex = position === 3 ? 2 : 1;
+
     cy.get(PRODUCT_ITEM, { timeout: 10000 })
       .eq(productIndex)
       .find(`${PRODUCT_SWATCHES_LIST} ${SWATCH_ITEM_SELECTOR}`)
-      .should('have.length.at.least', 2)
       .then(($items) => {
-        const index = position === 3 && $items.length >= 3 ? 2 : 1;
-        cy.wrap($items[index]).click({ force: true });
+        const inStock = $items.filter((_, el) => !isOutOfStockSwatch(el));
+        if (inStock.length <= wantedIndex) {
+          cy.log(
+            `Product ${productIndex + 1} has ${inStock.length} in-stock swatch(es); not selecting position ${position}.`
+          );
+          return;
+        }
+
+        const $swatch = inStock.eq(wantedIndex);
+        const name = $swatch.attr('title') || $swatch.attr('aria-label') || '';
+        cy.log(`Selecting in-stock swatch ${wantedIndex + 1}${name ? `: ${name}` : ''}`);
+        cy.wrap($swatch).click({ force: true });
       });
     BasePage.pause(800);
   }

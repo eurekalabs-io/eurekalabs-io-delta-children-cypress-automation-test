@@ -1,4 +1,5 @@
 import BasePage from '../BasePage';
+import { isOutOfStockSwatch } from '../../support/pdpVariantHelpers';
 
 export default class ProductsList extends BasePage {
   static bundlePlpCard = '.cb-bundle-layout__left .section-slider .cb-product-list-item-content';
@@ -25,11 +26,11 @@ export default class ProductsList extends BasePage {
           .find('ul.swatches__list li, .product__item-swatches ul li, .product__swatches ul li')
           .filter((i, li) => {
             const st = window.getComputedStyle(li);
-            return st.display !== 'none' && st.visibility !== 'hidden' && Cypress.$(li).is(':visible');
+            return st.display !== 'none' && st.visibility !== 'hidden' && Cypress.$(li).is(':visible') && !isOutOfStockSwatch(li);
           });
 
         if ($swatchLis.length < 2) {
-          cy.log(`${productLabel}: ${$swatchLis.length} swatch(es) — se requieren 2+ para alternar variante; omitido`);
+          cy.log(`${productLabel}: ${$swatchLis.length} swatch(es) en stock — se requieren 2+ para alternar variante; omitido`);
           return;
         }
 
