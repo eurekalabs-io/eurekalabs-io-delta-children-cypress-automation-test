@@ -8,6 +8,25 @@ const toMoney = (value) => {
   return `$${match[1]}`;
 };
 
+const moneyToCents = (value) => Math.round(Number(toMoney(value).slice(1)) * 100);
+
+const centsToMoney = (cents) => `$${(cents / 100).toFixed(2)}`;
+
+/** Names of Shopify automatic or code discounts currently applied to the cart. */
+const cartDiscountTitles = (cart) => {
+  const titles = new Set();
+  (cart.cart_level_discount_applications || []).forEach((discount) => {
+    if (discount && discount.title) titles.add(discount.title);
+  });
+  (cart.items || []).forEach((item) => {
+    (item.line_level_discount_allocations || []).forEach((allocation) => {
+      const title = allocation && allocation.discount_application && allocation.discount_application.title;
+      if (title) titles.add(title);
+    });
+  });
+  return titles.size ? ` (${Array.from(titles).join(', ')})` : '';
+};
+
 /**
  * Cypress 16 `be.visible` uses Element.checkVisibility(). That returns false
  * when an ancestor is not rendered (display:none, closed <details>, the
@@ -143,22 +162,68 @@ export default class CartPage extends BasePage {
     cy.screenshot(`${step}--${safe}`, { capture: 'fullPage', overwrite: true });
   }
 
-  /** Cart page Subtotal must match the total captured before Proceed to Cart. */
+  /**
+   * Cart subtotal must match the bundle total captured before Proceed to Cart.
+   * A sitewide automatic discount (for example 20% off, with already-reduced
+   * items excluded) is applied only on the cart page and can turn on or off.
+   * Shopify /cart.js reports that amount in total_discount, so the check is
+   * bundle total − discount = visible subtotal. With no discount the two
+   * amounts still have to match.
+   */
   static assertCartSubtotal(expectedPrice) {
-    const expected = toMoney(expectedPrice);
+    const expectedCents = moneyToCents(expectedPrice);
     const product = Cypress.env('selectedProductName');
     const label = product ? `cart page bundle total for ${product}` : 'cart page bundle total';
-    cy.get('.cart-form__header .cart__subtotal-sum', { timeout: 20000 }).should(($sums) => {
-      const rendered = $sums.toArray().filter(isRenderedCartPrice);
-      expect(rendered, 'rendered cart subtotal').to.have.length.greaterThan(0);
-      expect(toMoney(rendered[0].textContent), label).to.eq(expected);
-    });
+
+    const reconcile = (attemptsLeft) => {
+      cy.request({ url: '/cart.js' }).then((res) => {
+        const cart = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+        const originalCents = Number(cart.original_total_price);
+        const discountCents = Number(cart.total_discount) || 0;
+        const afterDiscountCents = originalCents - discountCents;
+
+        cy.get('.cart-form__header .cart__subtotal-sum').then(($sums) => {
+          const rendered = $sums.toArray().filter(isRenderedCartPrice);
+          if (!rendered.length && attemptsLeft > 0) {
+            cy.wait(1000);
+            reconcile(attemptsLeft - 1);
+            return;
+          }
+
+          expect(rendered, 'rendered cart subtotal').to.have.length.greaterThan(0);
+          const shownCents = moneyToCents(rendered[0].textContent);
+          const settled = originalCents === expectedCents && shownCents === afterDiscountCents;
+          if (!settled && attemptsLeft > 0) {
+            cy.wait(1000);
+            reconcile(attemptsLeft - 1);
+            return;
+          }
+
+          if (discountCents > 0) {
+            cy.log(
+              `Automatic cart discount ${centsToMoney(discountCents)}${cartDiscountTitles(cart)}. ` +
+              `Subtotal ${centsToMoney(shownCents)} from bundle ${centsToMoney(expectedCents)}.`
+            );
+          }
+
+          expect(centsToMoney(originalCents), `${label} before automatic discount`).to.eq(centsToMoney(expectedCents));
+          const shownLabel = discountCents > 0
+            ? `${label} after automatic discount of ${centsToMoney(discountCents)}`
+            : label;
+          expect(centsToMoney(shownCents), shownLabel).to.eq(centsToMoney(afterDiscountCents));
+        });
+      });
+    };
+
+    cy.get('.cart-form__header .cart__subtotal-sum', { timeout: 20000 }).should('exist');
+    reconcile(12);
   }
 
   /**
    * Reads the add-ons total, then clicks Proceed to Cart and checks that
-   * the cart page shows the same amount. Captain protection is turned off
-   * first because it is checked by default and is not part of the bundle total.
+   * the cart page shows the same amount, minus any automatic cart discount.
+   * Captain protection is turned off first because it is checked by default
+   * and is not part of the bundle total.
    */
   static proceedToCartComparingBundlePrice() {
     this.captureBundleTotalBeforeProceed().as('bundleTotalBeforeCart');
