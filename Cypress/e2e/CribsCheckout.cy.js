@@ -29,6 +29,7 @@ describe("Cribs Checkout Suite", () => {
     // checkout token from a previous run is not reused. Do not clear again
     // after Add To Cart: that drops the cart cookie and /checkout cannot
     // calculate shipping.
+    cy.step('Given the shopper opens the cribs collection with an empty cart');
     cy.clearCookies();
     cy.visit(CRIBS_COLLECTION_URL);
     cy.clearLocalStorage();
@@ -46,6 +47,7 @@ describe("Cribs Checkout Suite", () => {
   cribs.forEach((data, index) => {
     it(`Cribs-Checkout ${data.category} - ${data.subcategory}`, function () {
       this.test.title = `Cribs Checkout - Complete checkout Cribs ${data.category} - ${data.subcategory}`;
+      cy.step(`Given a crib checkout runs for ${data.category} - ${data.subcategory}`);
       cy.log(`Executing test ${index + 1} of ${cribs.length}: ${data.category} - ${data.subcategory}`);
 
       ProductsListCribsBestSellers.pickRandomProductWithMinSwatches(2).then(({ index: productIndex, count }) => {
@@ -80,6 +82,7 @@ describe("Cribs Checkout Suite", () => {
 
   it("Cribs Checkout - Add-ons and save warranty", function () {
     this.test.title = "Cribs Checkout - Add-ons and save warranty";
+    cy.step('Given the Grow With Me crib is opened to add a mattress and warranty');
     cy.viewport(1050, 818);
     cy.visit(GROW_WITH_ME_PDP_URL);
     cy.recordSelectedProduct(GROW_WITH_ME_PDP_URL);
@@ -112,6 +115,7 @@ describe("Cribs Checkout Suite", () => {
 
   it("Cribs Checkout - Only warranty", function () {
     this.test.title = "Cribs Checkout - Only warranty";
+    cy.step('Given the Grow With Me crib is opened to add only the warranty');
     cy.viewport(1050, 818);
     cy.visit(GROW_WITH_ME_PDP_URL);
     cy.recordSelectedProduct(GROW_WITH_ME_PDP_URL);

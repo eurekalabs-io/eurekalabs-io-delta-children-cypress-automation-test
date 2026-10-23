@@ -16,6 +16,7 @@
 // Import commands.js using ES2015 syntax:
 import './cypress-env-shim'
 import './commands'
+import { resetScenarioSteps, scenarioSteps } from './scenarioSteps'
 // Guest checkout visit + optional Storefront cartCreate (skip Shop Pay).
 import './shopifyCheckout'
 import 'wick-a11y';
@@ -48,18 +49,49 @@ if (app && app.document && !app.document.head.querySelector('[data-hide-command-
   app.document.head.appendChild(style);
 }
 
+const failedStepSlug = (message) => {
+  const slug = String(message || 'before the first step')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 90);
+  return slug || 'unknown-step';
+};
+
+const annotateFailure = (test) => {
+  if (!test || test.state !== 'failed' || !test.err) return;
+  if (String(test.err.message || '').includes('\nFailed at:')) return;
+
+  const executed = scenarioSteps();
+  const last = executed[executed.length - 1] || 'before the first step';
+  const lines = executed.length
+    ? executed.map((step, index) => `${index + 1}. ${step}`).join('\n')
+    : '(no steps were recorded)';
+
+  test.err.message = `${test.err.message}\n\nFailed at: ${last}\n\nSteps run:\n${lines}`;
+};
+
 beforeEach(() => {
+  resetScenarioSteps();
   cy.stubStorefrontNoise();
 });
 
 // Global cleanup to release memory between tests
 afterEach(function () {
+  annotateFailure(this.currentTest);
+
+  if (this.currentTest && this.currentTest.state === 'failed') {
+    const last = scenarioSteps().slice(-1)[0] || 'before the first step';
+    cy.screenshot(`failed-step--${failedStepSlug(last)}`, { capture: 'viewport' });
+  }
+
   // Checkout specs must keep cart/checkout cookies until the next
   // beforeEach. Clearing here emptied the cart while checkout still ran.
   if (
     Cypress.spec.relative.includes('NurserySetCheckout') ||
     Cypress.spec.relative.includes('KidsBedroomSetCheckout') ||
-    Cypress.spec.relative.includes('CribsCheckout')
+    Cypress.spec.relative.includes('CribsCheckout') ||
+    Cypress.spec.relative.includes('ShippingValidation')
   ) {
     cy.log(`Skipping cookie cleanup for ${Cypress.spec.name}`);
     return;

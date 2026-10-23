@@ -99,6 +99,7 @@ module.exports = defineConfig({
             test: entry && entry.test,
             product: entry && entry.product,
             path: entry && entry.path,
+            address: entry && entry.address,
             at: new Date().toISOString(),
           });
           fs.writeFileSync(selectedProductsFile, JSON.stringify(list, null, 2));

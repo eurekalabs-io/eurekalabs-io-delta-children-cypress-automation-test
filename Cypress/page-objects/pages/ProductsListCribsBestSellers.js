@@ -107,7 +107,7 @@ export default class ProductsListCribsBestSellers extends BasePage {
 
         const $swatch = inStock.eq(wantedIndex);
         const name = $swatch.attr('title') || $swatch.attr('aria-label') || '';
-        cy.log(`Selecting in-stock swatch ${wantedIndex + 1}${name ? `: ${name}` : ''}`);
+        cy.step(`When in-stock swatch ${wantedIndex + 1} is selected${name ? `: ${name}` : ''}`);
         cy.wrap($swatch).click({ force: true });
       });
     BasePage.pause(800);

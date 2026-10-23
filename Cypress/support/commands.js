@@ -3,16 +3,17 @@ import {
   getSecondSwatchTargetsOnPdp,
   isOutOfStockSwatch,
 } from './pdpVariantHelpers';
+import { recordScenarioStep } from './scenarioSteps';
 
-// ***********************************************
-// This example commands.js shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
+// Records a scenario step in the Cypress log and on the test.
+// GitHub Actions prints the log. A failed test appends the same list to the error.
+Cypress.Commands.add('step', (message) => {
+  const text = String(message || '').trim();
+  cy.then(() => {
+    recordScenarioStep(text);
+  });
+  cy.log(`STEP: ${text}`);
+});
 //
 //
 // -- This is a parent command --
@@ -329,6 +330,7 @@ Cypress.Commands.add('stubStorefrontNoise', () => {
     '**/doubleclick.net/**',
     '**/hotjar.com/**',
     '**/clarity.ms/**',
+    '**://*.clarity.ms/**',
     '**/klck.dev/**',
     '**/elfsight.com/**',
     '**/searchanise-ef84.kxcdn.com/**',
@@ -342,6 +344,13 @@ Cypress.Commands.add('stubStorefrontNoise', () => {
     // (open and run). Otherwise each telemetry POST shows as "(fetch) … no alias".
     cy.intercept(pattern, { statusCode: 204, body: '', log: false });
   });
+
+  // q.clarity.ms is a subdomain. A path glob like **/clarity.ms/** does not
+  // match it, so the real POST 204 kept showing in the command log.
+  cy.intercept(
+    { hostname: /(^|\.)clarity\.ms$/ },
+    { statusCode: 204, body: '', log: false }
+  );
 });
 
 function productLabelFromHref(href) {
@@ -368,9 +377,12 @@ function currentMochaTest() {
 }
 
 // Stores the product chosen for this run on the Mocha test so Slack can name it.
-Cypress.Commands.add('recordSelectedProduct', (href) => {
-  const { slug, name, path: productPath } = productLabelFromHref(href);
+Cypress.Commands.add('recordSelectedProduct', (href, extra = {}) => {
+  const { slug, name: slugName, path: productPath } = productLabelFromHref(href);
+  const name = (extra && extra.product) || slugName;
+  const address = extra && extra.address ? String(extra.address).replace(/\s+/g, ' ').trim() : '';
   const note = `Product: ${name} — ${productPath}`;
+  const shipNote = address ? `Ship to: ${address}` : '';
 
   Cypress.env('selectedProductSlug', slug);
   Cypress.env('selectedProductName', name);
@@ -385,6 +397,7 @@ Cypress.Commands.add('recordSelectedProduct', (href) => {
     mochaTest.title = `${baseTitle} | ${note}`;
     if (!Array.isArray(mochaTest.context)) mochaTest.context = [];
     mochaTest.context.push(note);
+    if (shipNote && !mochaTest.context.includes(shipNote)) mochaTest.context.push(shipNote);
   }
 
   cy.task('recordSelectedProduct', {
@@ -392,9 +405,11 @@ Cypress.Commands.add('recordSelectedProduct', (href) => {
     test: baseTitle,
     product: name,
     path: productPath,
+    address,
   }, { log: false });
 
   cy.log(note);
+  if (shipNote) cy.log(shipNote);
 });
 
 // beforeEach picks the product before the spec assigns its report title.

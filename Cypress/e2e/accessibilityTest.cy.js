@@ -43,6 +43,7 @@ describe('Accessibility Suite', () => {
     
     // Helper function to wait for the page to be fully loaded
     const waitForPageLoad = () => {
+        cy.step('Given the page has finished loading');
         // Wait for body to be visible
         cy.get('body').should('be.visible');
         // Accept cookie banner if it appears
@@ -202,6 +203,7 @@ describe('Accessibility Suite', () => {
 
     // Main accessibility test on homepage
     it('should pass accessibility checks on homepage', () => {
+        cy.step('When the homepage is checked for accessibility');
         cy.visit('/');
         waitForPageLoad();
         
@@ -226,6 +228,7 @@ describe('Accessibility Suite', () => {
     // Accessibility test on collection pages
     criticalPages.forEach(({ path, name }) => {
         it(`should pass accessibility checks on ${name}`, () => {
+            cy.step(`When ${name} is checked for accessibility`);
             // Visit the page without failing on non-2xx status codes
             cy.visit(path, { failOnStatusCode: false, timeout: 30000 });
             
@@ -258,6 +261,7 @@ describe('Accessibility Suite', () => {
 
     // Accessibility test on product detail page (PDP)
     it('should pass accessibility checks on product detail page', () => {
+        cy.step('When a product detail page is checked for accessibility');
         // Try to navigate to the first available collection
         cy.visit('/collections/kids-sets', { failOnStatusCode: false, timeout: 30000 });
         
@@ -321,6 +325,7 @@ describe('Accessibility Suite', () => {
 
     viewports.forEach(({ width, height, name }) => {
         it(`should pass accessibility checks on ${name} viewport`, () => {
+            cy.step(`When the homepage is checked for accessibility on ${name}`);
             cy.viewport(width, height);
             cy.visit('/');
             waitForPageLoad();

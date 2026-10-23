@@ -534,20 +534,22 @@ export default class CheckoutPage extends BasePage {
   static endingCheckoutProcess(data = checkoutUser) {
     const user = { ...checkoutUser, ...data };
 
+    cy.step(`When the shopper opens checkout for ${user.email}`);
     cy.viewport(1125, 818);
     this.interceptCheckoutUpdates();
     CartPage.goToCart();
     CartPage.proceedToCheckout();
     this.waitForCheckoutPage();
     this.traceCheckoutSubmitState('checkout-page-loaded');
-    cy.log(`Checkout test user: ${user.email} — ${user.firstName} ${user.lastName}`);
 
+    cy.step(`When the email is filled — ${user.email}`);
     this.fillFirstVisible(
       ['#email', 'input[name="email"]', 'input[autocomplete="email"]', 'input[type="email"]'],
       user.email
     );
     this.dismissBlockingOverlays();
 
+    cy.step(`When the recipient is filled — ${user.firstName} ${user.lastName}`);
     this.fillFirstVisible(
       ['input[aria-label="First name"]', 'input[name="firstName"]', 'input[autocomplete="given-name"]', 'input[placeholder*="First name"]'],
       user.firstName
@@ -556,31 +558,43 @@ export default class CheckoutPage extends BasePage {
       ['input[aria-label="Last name"]', 'input[name="lastName"]', 'input[autocomplete="family-name"]', 'input[placeholder*="Last name"]'],
       user.lastName
     );
+    cy.step(`When the street address is filled — ${user.address1}`);
     this.fillFirstVisible(
       ['#shipping-address1', 'input[aria-label="Address"]', 'input[name="address1"]', 'input[autocomplete="address-line1"]', 'input[placeholder*="Address"]'],
       user.address1
     );
+    cy.step('When an address suggestion is accepted if Shopify offers one');
     this.pickAddressSuggestionIfPresent();
+    cy.step(`When the city is filled — ${user.city}`);
     this.fillFirstVisible(
       ['input[aria-label="City"]', 'input[name="city"]', 'input[autocomplete="address-level2"]', 'input[placeholder*="City"]'],
       user.city
     );
     BasePage.pause(500);
+    cy.step(`When the state is selected — ${user.state} (${user.stateCode})`);
     this.selectShippingZone(user.state, user.stateCode);
+    cy.step(`When the ZIP code is filled — ${user.zip}`);
     this.fillFirstVisible(
       ['input[aria-label="ZIP code"]', 'input[name="postalCode"]', 'input[autocomplete="postal-code"]', 'input[placeholder*="ZIP"]'],
       user.zip
     );
+    cy.step(`When the phone number is filled — ${user.phone}`);
     this.fillFirstVisible(
       ['input[aria-label="Phone"]', 'input[name="phone"]', 'input[autocomplete="tel"]', 'input[type="tel"]', 'input[placeholder*="Phone"]'],
       user.phone
     );
+    cy.step(`When the phone country is selected — ${user.phoneCountry || 'default'}`);
     this.selectPhoneCountry(user.phoneCountry);
+    cy.step('When custom property checkboxes are accepted if the form shows them');
     this.clickCustomPropertiesIfPresent();
+    cy.step('When Shopify finishes recalculating shipping');
     this.waitForCheckoutIdle();
     this.traceCheckoutSubmitState('after-fill-contact-shipping');
+    cy.step('Then shipping rates are listed for this address');
     this.assertShippingRatesLoaded();
+    cy.step('When the shopper clicks Complete order');
     this.clickCompleteOrder();
+    cy.step('Then the thank-you page confirms the order');
     this.assertOrderConfirmed(user);
   }
 
@@ -677,6 +691,164 @@ export default class CheckoutPage extends BasePage {
       .filter(':visible')
       .first()
       .should('have.value', email);
+  }
+
+  /**
+   * Guest checkout for fbosio@eurekalabs.io. That mailbox receives a full
+   * discount, so Complete order can finish, and those orders are cancelled
+   * automatically. Confirms the thank-you page shows this destination.
+   */
+  /**
+   * Fills guest contact and the ship-to address, then waits until Shopify
+   * has recalculated shipping. Does not choose a rate or place the order.
+   */
+  static fillShippingForm(data = checkoutUser) {
+    const user = { ...checkoutUser, ...data };
+    const shipTo = `${user.address1}, ${user.city}, ${user.stateCode} ${user.zip}`;
+
+    cy.step(`When the shopper opens checkout for ${shipTo}`);
+    cy.viewport(1125, 818);
+    this.interceptCheckoutUpdates();
+    CartPage.goToCart();
+    CartPage.proceedToCheckout();
+    this.waitForCheckoutPage();
+    this.traceCheckoutSubmitState('checkout-page-loaded');
+
+    cy.step(`When the email is filled — ${user.email}`);
+    this.fillFirstVisible(
+      ['#email', 'input[name="email"]', 'input[autocomplete="email"]', 'input[type="email"]'],
+      user.email
+    );
+    this.dismissBlockingOverlays();
+    cy.step(`When the recipient is filled — ${user.firstName} ${user.lastName}`);
+    this.fillFirstVisible(
+      ['input[aria-label="First name"]', 'input[name="firstName"]', 'input[autocomplete="given-name"]', 'input[placeholder*="First name"]'],
+      user.firstName
+    );
+    this.fillFirstVisible(
+      ['input[aria-label="Last name"]', 'input[name="lastName"]', 'input[autocomplete="family-name"]', 'input[placeholder*="Last name"]'],
+      user.lastName
+    );
+    cy.step(`When the street address is filled — ${user.address1}`);
+    this.fillFirstVisible(
+      ['#shipping-address1', 'input[aria-label="Address"]', 'input[name="address1"]', 'input[autocomplete="address-line1"]', 'input[placeholder*="Address"]'],
+      user.address1
+    );
+    cy.step('When an address suggestion is accepted if Shopify offers one');
+    this.pickAddressSuggestionIfPresent();
+    cy.step(`When the city is filled — ${user.city}`);
+    this.fillFirstVisible(
+      ['input[aria-label="City"]', 'input[name="city"]', 'input[autocomplete="address-level2"]', 'input[placeholder*="City"]'],
+      user.city
+    );
+    BasePage.pause(500);
+    cy.step(`When the state is selected — ${user.state} (${user.stateCode})`);
+    this.selectShippingZone(user.state, user.stateCode);
+    cy.step(`When the ZIP code is filled — ${user.zip}`);
+    this.fillFirstVisible(
+      ['input[aria-label="ZIP code"]', 'input[name="postalCode"]', 'input[autocomplete="postal-code"]', 'input[placeholder*="ZIP"]'],
+      user.zip
+    );
+    cy.step(`When the phone number is filled — ${user.phone}`);
+    this.fillFirstVisible(
+      ['input[aria-label="Phone"]', 'input[name="phone"]', 'input[autocomplete="tel"]', 'input[type="tel"]', 'input[placeholder*="Phone"]'],
+      user.phone
+    );
+    cy.step(`When the phone country is selected — ${user.phoneCountry || 'default'}`);
+    this.selectPhoneCountry(user.phoneCountry);
+    cy.step('When custom property checkboxes are accepted if the form shows them');
+    this.clickCustomPropertiesIfPresent();
+    cy.step(`Then the ZIP field still shows ${user.zip}`);
+    this.assertZipPreserved(user.zip);
+    cy.step('When Shopify finishes recalculating shipping');
+    this.waitForCheckoutIdle();
+    this.traceCheckoutSubmitState('after-fill-contact-shipping');
+  }
+
+  static validateShippingDestination(data = checkoutUser) {
+    const user = { ...checkoutUser, ...data };
+    const shipTo = `${user.address1}, ${user.city}, ${user.stateCode} ${user.zip}`;
+
+    this.fillShippingForm(user);
+    cy.step('Then shipping rates are listed for this address');
+    this.assertShippingRatesLoaded();
+    cy.step('When the shopper clicks Complete order');
+    this.clickCompleteOrder();
+    cy.step(`Then the thank-you page shows ${shipTo}`);
+    this.assertShippingOrderConfirmed(user);
+  }
+
+  /**
+   * Valid outcome for a PO Box: Shopify refuses the address. The warning is
+   * the pass condition. Complete order is not clicked.
+   */
+  static validateShippingNotAvailableForPoBox(data = checkoutUser) {
+    const user = { ...checkoutUser, ...data };
+    const quoted = `"${user.address1}, ${user.city}, ${user.stateCode} ${user.zip}"`;
+
+    this.fillShippingForm(user);
+    cy.step(`Then Shopify warns that shipping is not available for PO Box ${quoted}`);
+    this.assertPoBoxShippingWarning(quoted);
+    cy.step('Then the order is not placed because this PO Box cannot be shipped');
+  }
+
+  static assertPoBoxShippingWarning(quotedAddress) {
+    cy.get('body', { timeout: 45000 }).should(($body) => {
+      const text = $body.text().replace(/\s+/g, ' ');
+      expect(text, 'PO Box warning heading').to.match(/Shipping not available/i);
+      expect(text, 'PO Box warning detail').to.match(
+        /Your order cannot be shipped to the selected address/i
+      );
+      expect(text, 'PO Box warning guidance').to.match(
+        /Review your address to ensure it's correct and try again, or select a different address/i
+      );
+    });
+    cy.log(`SHIPPING NOT AVAILABLE FOR PO BOX — ${quotedAddress}`);
+  }
+
+  static assertShippingOrderConfirmed(user = checkoutUser) {
+    const phoneDigits = String(user.phone || '').replace(/\D/g, '');
+    const zipBase = String(user.zip || '').slice(0, 5);
+    const stateLabel = String(user.state || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const stateCode = String(user.stateCode || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    cy.contains(/your order is confirmed/i, { timeout: 60000 }).should('be.visible');
+    cy.contains(new RegExp(`thank you[\\s,]*${user.firstName}`, 'i'), { timeout: 15000 }).should('be.visible');
+    cy.contains(/Confirmation\s*#\s*[A-Z0-9]+/i).should('be.visible');
+    cy.contains(/confirmation email/i).should('be.visible');
+    cy.contains(user.email).should('be.visible');
+    cy.contains(user.lastName).should('be.visible');
+    cy.contains(user.address1, { matchCase: false }).should('be.visible');
+    cy.contains(user.city, { matchCase: false }).should('be.visible');
+    cy.contains(zipBase).should('be.visible');
+    cy.contains(user.country, { matchCase: false }).should('be.visible');
+    cy.contains(new RegExp(`${stateLabel}|\\b${stateCode}\\b`, 'i')).should('be.visible');
+    if (phoneDigits.length >= 10) {
+      cy.contains(phoneDigits).should('be.visible');
+    }
+    cy.contains(/\$\s*0(?:\.00)?/).should('exist');
+    cy.contains(/track order/i, { timeout: 15000 }).should('exist');
+
+    cy.contains(/Confirmation\s*#\s*[A-Z0-9]+/i).then(($el) => {
+      cy.log(
+        `Order confirmation: ${$el.text().replace(/\s+/g, ' ').trim()} — ${user.email} — ${user.address1}, ${user.city}, ${user.stateCode} ${user.zip}`
+      );
+    });
+  }
+
+  static assertZipPreserved(zip) {
+    const expected = String(zip || '');
+    cy.get(
+      'input[aria-label="ZIP code"], input[name="postalCode"], input[autocomplete="postal-code"]',
+      { timeout: 15000 }
+    )
+      .filter(':visible')
+      .first()
+      .invoke('val')
+      .should((value) => {
+        const actual = String(value || '').replace(/\s/g, '');
+        expect(actual, `ZIP field should keep ${expected}`).to.include(expected);
+      });
   }
 
   static assertShippingRatesLoaded() {

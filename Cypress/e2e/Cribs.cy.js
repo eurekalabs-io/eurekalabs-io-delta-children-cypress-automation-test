@@ -14,6 +14,7 @@ describe("Cribs Collection - Best Sellers with variants", () => {
 
   beforeEach(() => {
 
+    cy.step('Given the shopper opens the cribs best sellers collection');
     cy.visit(CRIBS_COLLECTION_URL);
 
     cy.acceptCookieBannerIfPresent();
@@ -29,6 +30,7 @@ describe("Cribs Collection - Best Sellers with variants", () => {
 
 
   it("Should find a product with two or more variants and select the second swatch on the collection page", () => {
+    cy.step('When a best seller with two or more in-stock colors has its second swatch selected');
 
     ProductsListCribsBestSellers.pickRandomProductWithMinSwatches(2).then(
 
@@ -55,6 +57,7 @@ describe("Cribs Collection - Best Sellers with variants", () => {
 
 
   it("Should select the third swatch when the product has at least three variants", () => {
+    cy.step('When a best seller with three or more in-stock colors has its third swatch selected');
 
     ProductsListCribsBestSellers.pickRandomProductWithMinSwatches(3).then(
 
@@ -85,6 +88,7 @@ describe("Cribs Collection - Best Sellers with variants", () => {
 
 
   it("When the first product has more than one variant, should open PDP, change preselected option, and assert images update", () => {
+    cy.step('When a crib PDP selects another in-stock color and the hero image is checked');
 
     ProductsListCribsBestSellers.pickRandomProductWithMinSwatches(2).then(
 

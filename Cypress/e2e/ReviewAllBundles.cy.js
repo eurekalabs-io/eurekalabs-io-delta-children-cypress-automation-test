@@ -39,7 +39,7 @@ const openBundlesPage = (attempt = 1) => {
  */
 describe('Bundle builder PLP — swatch and variant selection per product', () => {
   beforeEach(() => {
-    cy.log('Opening bundles landing page and starting a set');
+    cy.step('Given the shopper opens the bundles page and starts a set');
     openBundlesPage();
     cy.acceptCookieBannerIfPresent();
     cy.scrollTo(0, 0);
@@ -91,6 +91,7 @@ describe('Bundle builder PLP — swatch and variant selection per product', () =
     it(`should change variants via swatches for each bundle PLP product — ${data.category} / ${data.subcategory}`, function () {
       this.test.title =
         `Bundle PLP — ${data.category} / ${data.subcategory}: validate swatch selection and variant updates on the builder list`;
+      cy.step(`When bundle swatches are checked for ${data.category} / ${data.subcategory}`);
       cy.attachSelectedProduct();
 
       cy.log(`Fixture ${index + 1} of ${sets.length}: ${data.category} — ${data.subcategory}`);

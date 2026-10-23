@@ -11,6 +11,7 @@ export default class ProductsList extends BasePage {
    * cambia (imagen distinta o lista de swatches aún operativa).
    */
   static validateBundlePlSwatches() {
+    cy.step('When each bundle product with an in-stock alternate swatch changes variant');
     cy.get(this.bundlePlpSlider, { timeout: 25000 }).should('exist').and('be.visible');
 
     cy.get(this.bundlePlpCard, { timeout: 20000 })

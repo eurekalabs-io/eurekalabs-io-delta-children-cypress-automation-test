@@ -66,6 +66,7 @@ export default class CartPage extends BasePage {
   static proceedToCartButton = '.cb-addons .cb-addons-border--top button .v2-button__text';
 
   static selectAddOns() {
+    cy.step('When an add-on is selected if the cart offers one');
     // Check if there are add-ons available before selecting
     cy.get('body').then(($body) => {
       const addOns = $body.find(this.firstAddOn);
@@ -226,12 +227,16 @@ export default class CartPage extends BasePage {
    * and is not part of the bundle total.
    */
   static proceedToCartComparingBundlePrice() {
+    cy.step('When the bundle total is read before Proceed to Cart');
     this.captureBundleTotalBeforeProceed().as('bundleTotalBeforeCart');
     this.saveReviewScreenshot('bundle-total');
+    cy.step('When the shopper clicks Proceed to Cart');
     this.proceedToCart();
     cy.url({ timeout: 45000 }).should('include', '/cart');
+    cy.step('When Captain shipping protection is turned off if it is checked');
     this.uncheckCaptainProtection();
     cy.get('@bundleTotalBeforeCart').then((expected) => {
+      cy.step('Then the cart subtotal matches the bundle total, minus any automatic discount');
       this.assertCartSubtotal(expected);
       this.saveReviewScreenshot('cart-subtotal');
     });
@@ -278,6 +283,7 @@ export default class CartPage extends BasePage {
   }
 
   static assertShopifyCartHasItems() {
+    cy.step('Then the Shopify cart contains at least one item');
     this.captureShopifyCart().then((cart) => {
       expect(cart, 'Shopify /cart.js body').to.be.an('object');
       expect(cart.item_count, 'cart.item_count').to.be.greaterThan(0);

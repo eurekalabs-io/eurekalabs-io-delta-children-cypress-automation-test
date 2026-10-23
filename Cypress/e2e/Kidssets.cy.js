@@ -22,6 +22,7 @@ describe('Kids Sets Collection Suite', () => {
   });
   beforeEach(() => {
     cy.log('Setting up test environment for Kids Sets Collection');
+    cy.step('Given the shopper opens the kids bedroom sets page');
     cy.visit("https://www.deltachildren.com/pages/kids-bedroom-sets");
     // Accept cookie banner if it appears
     cy.acceptCookieBannerIfPresent();
@@ -97,6 +98,7 @@ describe('Kids Sets Collection Suite', () => {
     it(`should select kids set for ${data.category} - ${data.subcategory}`, function() {
       // Test context for better reporting
       this.test.title = `Kids Sets Collection Suite - should select kids set for ${data.category} - ${data.subcategory}`;
+      cy.step(`Given a kids bedroom set is built for ${data.category} - ${data.subcategory}`);
       cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
       // Verify URL and handle different cases

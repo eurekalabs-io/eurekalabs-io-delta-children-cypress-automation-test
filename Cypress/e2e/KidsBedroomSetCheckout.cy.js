@@ -23,6 +23,7 @@ describe('Kids Bedroom Set Checkout Suite', () => {
     // Shopify checkout token from a previous run is not reused. Do not
     // clear again after add-to-cart: that drops the cart cookie and
     // /checkout cannot calculate shipping.
+    cy.step('Given the shopper opens the kids bedroom sets page with an empty cart');
     cy.clearCookies();
     cy.visit('/pages/kids-bedroom-sets');
     cy.clearLocalStorage();
@@ -40,6 +41,7 @@ describe('Kids Bedroom Set Checkout Suite', () => {
   sets.forEach((data, index) => {
     it(`Kids-Bedroom-Set-Checkout ${data.category} - ${data.subcategory}`, function() {
       this.test.title = `Kids Bedroom Set Checkout - Complete checkout ${data.category} - ${data.subcategory}`;
+      cy.step(`Given the kids bedroom checkout scenario is ${data.category} - ${data.subcategory}`);
       cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
 
