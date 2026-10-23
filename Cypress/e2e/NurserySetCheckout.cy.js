@@ -23,6 +23,7 @@ describe('Nursery Set Checkout Suite', () => {
     // Shopify checkout token from a previous run is not reused. Do not
     // clear again after add-to-cart: that drops the cart cookie and
     // /checkout cannot calculate shipping.
+    cy.step('Given the shopper opens the nursery sets page with an empty cart');
     cy.clearCookies();
     cy.visit('/pages/bundles');
     cy.clearLocalStorage();
@@ -40,6 +41,7 @@ describe('Nursery Set Checkout Suite', () => {
   sets.forEach((data, index) => {
     it(`Complete-Checkout-Process ${data.category} - ${data.subcategory}`, function() {
       this.test.title = `Nursery Set Checkout - Complete order process ${data.category} - ${data.subcategory}`;
+      cy.step(`Given the nursery checkout scenario is ${data.category} - ${data.subcategory}`);
       cy.attachSelectedProduct();
       cy.log(`Executing test ${index + 1} of ${sets.length}: ${data.category} - ${data.subcategory}`);
 

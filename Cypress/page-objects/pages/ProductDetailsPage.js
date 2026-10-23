@@ -26,6 +26,7 @@ export default class ProductDetailsPage extends BasePage {
   
 // Count products that are not default and select
   static selectProducts() {
+    cy.step('When each nursery bundle component is selected');
     // Wait for products to be available with longer timeout
     // Products may load dynamically, so we wait for them to appear
     cy.get(this.countProducts, { timeout: 20000 }).then($elements => {
@@ -88,6 +89,7 @@ export default class ProductDetailsPage extends BasePage {
 
 // Count products that are not default and select
   static selectProductsKidsSets() {
+    cy.step('When each kids bedroom bundle component is selected');
     // Wait for products to be available with longer timeout
     // Products may load dynamically, so we wait for them to appear
     cy.get(this.countProductsKids, { timeout: 20000 }).then($elements => {
@@ -156,6 +158,7 @@ export default class ProductDetailsPage extends BasePage {
   }
 
   static bundleAddCart() {
+    cy.step('When the bundle is added to the cart');
     // First verify if button exists before attempting to click
     cy.get('body').then(($body) => {
       const addToCartButton = $body.find(this.addToCart);
@@ -171,21 +174,134 @@ export default class ProductDetailsPage extends BasePage {
     });
   }
 
-  /** Second swatch on a standard crib PDP, then confirm the hero image updates. */
+  /** Next in-stock color on a standard crib PDP, then confirm the hero image updates. */
   static selectDifferentVariantAndValidateImages() {
     cy.selectDifferentVariantOnPDPAndValidateImages();
   }
 
+  // Crib-style PDPs use main-product-form. Products without that layout
+  // (no color swatches, or a single dropdown) use shopify-product-form.
+  static addToCartButton = [
+    'form.main-product-form.regular button[data-submit-button]',
+    'form.shopify-product-form button[data-submit-button]',
+  ].join(', ');
+
+  static isSoldOut($button) {
+    return $button.is(':disabled') || /sold out/i.test($button.text());
+  }
+
+  static selectedVariantLabel($button) {
+    const $form = $button.closest('form');
+    const $checked = $form.find('input.swatch-input:checked, input[type="radio"]:checked').first();
+    const fromInput = $checked.attr('data-title') || $checked.attr('data-variant-title') || '';
+    if (String(fromInput).trim()) return String(fromInput).trim();
+
+    const $selected = $form.find('[aria-checked="true"], .swatches__item--selected').first();
+    const swatchLabel = ($selected.attr('aria-label') || $selected.text() || '').replace(/\s+/g, ' ').trim();
+    if (swatchLabel) return swatchLabel;
+
+    const optionText = $form.find('select[name^="options"] option:selected').first().text();
+    return String(optionText || '').replace(/\s+/g, ' ').trim();
+  }
+
+  static stockState($body) {
+    const $button = $body.find(this.addToCartButton).first();
+    if (!$button.length) {
+      return { available: false, variant: '', hasSwatches: false };
+    }
+
+    return {
+      available: !this.isSoldOut($button),
+      variant: this.selectedVariantLabel($button),
+      hasSwatches: $button.closest('form').find('ul.swatches__list, input.swatch-input').length > 0,
+    };
+  }
+
   /**
-   * Clicks Add To Cart on the main crib form.
-   * The storefront posts the crib first, then a second /cart/add.js with the
+   * Reads whether the PDP can be purchased. A sold-out color is swapped for
+   * another in-stock color on the same product. A fully sold-out product
+   * yields available: false and does not fail the test.
+   */
+  static findInStockVariant() {
+    cy.step('Then the selected product is checked for stock');
+    return cy.get('body', { timeout: 20000 }).then(($body) => {
+      const state = ProductDetailsPage.stockState($body);
+      if (state.available || !state.hasSwatches) {
+        return cy.wrap(
+          { available: state.available, variant: state.variant },
+          { log: false }
+        );
+      }
+
+      cy.step('Selected variant is out of stock. Selecting a different in-stock variant on this product.');
+      cy.selectDifferentVariantOnPDPAndValidateImages();
+      return cy.get('body', { timeout: 20000 }).then(($after) => {
+        const next = ProductDetailsPage.stockState($after);
+        return cy.wrap(
+          { available: next.available, variant: next.variant },
+          { log: false }
+        );
+      });
+    });
+  }
+
+  /**
+   * First check on the PDP: Add To Cart must be enabled for the current
+   * variant, or for another in-stock variant on the same product.
+   * Returns the variant label that is available to purchase.
+   */
+  static assertVariantAvailableForAddToCart() {
+    cy.step('Then Add To Cart is enabled for an in-stock variant');
+    cy.get(this.addToCartButton, { timeout: 20000 })
+      .first()
+      .then(($button) => {
+        if (!ProductDetailsPage.isSoldOut($button)) return;
+        const hasSwatches = $button.closest('form').find('ul.swatches__list, input.swatch-input').length > 0;
+        if (!hasSwatches) return;
+        cy.log('Current variant is sold out. Selecting an in-stock variant before Add To Cart.');
+        cy.selectDifferentVariantOnPDPAndValidateImages();
+      });
+
+    return cy.get(this.addToCartButton, { timeout: 20000 })
+      .first()
+      .should(($button) => {
+        expect(
+          ProductDetailsPage.isSoldOut($button),
+          'A variant must be available for Add To Cart'
+        ).to.eq(false);
+      })
+      .then(($button) => ProductDetailsPage.selectedVariantLabel($button))
+      .then((variant) => {
+        // cy.log queues a command. Yield the label with cy.wrap so this
+        // callback does not also return the string synchronously.
+        cy.log(`Add To Cart is available${variant ? `: ${variant}` : ''}`);
+        return cy.wrap(variant, { log: false });
+      });
+  }
+
+  /**
+   * Clicks Add To Cart on the main product form.
+   * The storefront posts the product first, then a second /cart/add.js with the
    * selected ADD MORE items and warranty. Pass expectUpsells when those were
    * chosen before this click so the test does not leave the PDP early.
    */
   static addStandardProductToCart({ expectUpsells = false } = {}) {
+    cy.step('When the shopper adds the in-stock product to the cart');
     cy.intercept('POST', '**/cart/add.js').as('standardAddToCart');
-    cy.get('form.main-product-form.regular button[data-submit-button]', { timeout: 20000 })
+    cy.get(this.addToCartButton, { timeout: 20000 })
       .first()
+      .then(($button) => {
+        if (!ProductDetailsPage.isSoldOut($button)) return;
+        const hasSwatches = $button.closest('form').find('ul.swatches__list, input.swatch-input').length > 0;
+        if (!hasSwatches) return;
+        cy.log('Current color is sold out. Selecting an in-stock variant before Add To Cart.');
+        cy.selectDifferentVariantOnPDPAndValidateImages();
+      });
+    cy.get(this.addToCartButton, { timeout: 20000 })
+      .first()
+      .should(($button) => {
+        expect(ProductDetailsPage.isSoldOut($button), 'Add To Cart variant is in stock').to.eq(false);
+      })
       .scrollIntoView()
       .click({ force: true });
     cy.wait('@standardAddToCart', { timeout: 30000 }).its('response.statusCode').should('be.oneOf', [200, 201]);

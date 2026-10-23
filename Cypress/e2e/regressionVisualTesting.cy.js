@@ -116,6 +116,7 @@ describe('Visual Regression - Desktop and Mobile', () => {
   urls.forEach(({ path, name, description }) => {
     viewports.forEach(({ name: viewportName, width, height, device }) => {
       it(`should visually compare ${name} on ${viewportName}`, () => {
+        cy.step(`When ${name} is compared on ${viewportName}`);
         // Set viewport
         cy.viewport(width, height);
         
@@ -164,6 +165,7 @@ describe('Visual Regression - Desktop and Mobile', () => {
 
     urls.forEach(({ path, name }) => {
       it(`should compare header of ${name} on Desktop`, () => {
+        cy.step(`When the ${name} header is compared on desktop`);
         cy.visit(path, { failOnStatusCode: false, timeout: 30000 });
         cy.get('body').should('be.visible', { timeout: 30000 });
         
@@ -202,6 +204,7 @@ describe('Visual Regression - Desktop and Mobile', () => {
 
     urls.forEach(({ path, name }) => {
       it(`should compare header of ${name} on Mobile`, () => {
+        cy.step(`When the ${name} header is compared on mobile`);
         cy.visit(path, { failOnStatusCode: false, timeout: 30000 });
         cy.get('body').should('be.visible', { timeout: 30000 });
         
@@ -349,6 +352,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
         urls.forEach(({ path, name, description }) => {
           viewports.forEach(({ name: viewportName, width, height, device }) => {
             it(`should create base snapshot of ${name} on ${viewportName}`, () => {
+              cy.step(`When a base snapshot of ${name} is created on ${viewportName}`);
               cy.viewport(width, height);
               
               const snapshotBaseName = `${name}-${viewportName}-env-base`.replace(/\s+/g, '-').toLowerCase();
@@ -385,6 +389,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
         urls.forEach(({ path, name, description }) => {
           viewports.forEach(({ name: viewportName, width, height, device }) => {
             it(`should compare ${name} from environment ${compareEnvUrl} against base on ${viewportName}`, () => {
+              cy.step(`When ${name} on ${viewportName} is compared with the base environment`);
               cy.viewport(width, height);
               
               const snapshotBaseName = `${name}-${viewportName}-env-base`.replace(/\s+/g, '-').toLowerCase();
@@ -432,6 +437,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
           if (!viewportConfig) return;
 
           it(`should compare header of ${name} between environments on ${viewportName}`, () => {
+            cy.step(`When the ${name} header on ${viewportName} is compared between environments`);
             cy.viewport(viewportConfig.width, viewportConfig.height);
             
             // Visit base environment
@@ -476,6 +482,7 @@ describe('Environment Comparison - Desktop and Mobile', () => {
     });
   } else {
     it('Environment comparison disabled', () => {
+      cy.step('Given environment comparison is disabled');
       cy.log('ℹ️ Environment comparison is disabled.');
       cy.log('   To enable it, configure the environment variables:');
       cy.log('   - COMPARE_ENV_URL: URL of the environment to compare');

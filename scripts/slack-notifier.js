@@ -1209,9 +1209,7 @@ function titleWithoutProduct(title) {
   return String(title || '').replace(/\s+\|\s+Product:\s+.+$/i, '').trim();
 }
 
-function productFromTest(test, suite, records) {
-  if (!test) return null;
-
+function testSources(test) {
   const sources = [test.title, test.fullTitle];
   if (Array.isArray(test.context)) {
     test.context.forEach((entry) => {
@@ -1221,10 +1219,10 @@ function productFromTest(test, suite, records) {
       else if (entry.message) sources.push(String(entry.message));
     });
   }
+  return sources.filter(Boolean);
+}
 
-  const inline = sources.filter(Boolean).join('\n').match(/Product:\s*(.+)/);
-  if (inline) return inline[1].split('\n')[0].trim();
-
+function matchingProductRecord(test, suite, records) {
   const title = titleWithoutProduct(test.fullTitle || test.title || '');
   const file = String((suite && (suite.file || suite.filePath)) || '').toLowerCase();
   const matches = (records || []).filter((record) => {
@@ -1234,14 +1232,36 @@ function productFromTest(test, suite, records) {
     if (!specOk || !recordTitle) return false;
     return title.includes(recordTitle) || recordTitle.includes(title);
   });
-  const hit = matches[matches.length - 1];
+  return matches.length ? matches[matches.length - 1] : null;
+}
+
+function productFromTest(test, suite, records) {
+  if (!test) return null;
+
+  const inline = testSources(test).join('\n').match(/Product:\s*(.+)/);
+  if (inline) return inline[1].split('\n')[0].trim();
+
+  const hit = matchingProductRecord(test, suite, records);
   if (!hit || !hit.product) return null;
   return hit.path ? `${hit.product} — ${hit.path}` : hit.product;
 }
 
+function addressFromTest(test, suite, records) {
+  if (!test) return null;
+
+  const inline = testSources(test).join('\n').match(/Ship to:\s*(.+)/);
+  if (inline) return inline[1].split('\n')[0].trim();
+
+  const hit = matchingProductRecord(test, suite, records);
+  return hit && hit.address ? String(hit.address).trim() : null;
+}
+
 function productLine(test, suite, records) {
   const product = test ? productFromTest(test, suite, records) : null;
-  return `  └─ Product: ${product || 'none selected'}\n`;
+  const address = test ? addressFromTest(test, suite, records) : null;
+  let line = `  └─ Product: ${product || 'none selected'}\n`;
+  if (address) line += `  └─ Ship to: ${address}\n`;
+  return line;
 }
 
 function chunkFullText(text, size = 39000) {
@@ -1449,7 +1469,7 @@ function formatTestDetails(suites, results = null) {
             const subtestTitle = titleWithoutProduct(subtest.fullTitle || subtest.title || 'Unnamed Subtest');
             const subtestDuration = subtest.duration ? ` (${formatDuration(subtest.duration)})` : '';
             details += `  ${subtestStatusEmoji} *${subtestTitle}*${subtestDuration}\n`;
-            details += productLine(subtest, suite, selectedProducts).replace('  └─', '    └─');
+            details += productLine(subtest, suite, selectedProducts).replaceAll('  └─', '    └─');
             
             if (subtest.state === 'failed' && subtest.err) {
               const subtestErrorMsg = subtest.err.message || subtest.err.estack || 'Unknown error';
