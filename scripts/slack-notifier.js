@@ -1332,6 +1332,210 @@ function formatCribsCheckoutBreakdown(suite, records) {
 }
 
 /**
+ * Delivery zones for ShippingValidation.json.
+ * ZIP is the key because one state can belong to more than one zone.
+ */
+const SHIPPING_ZONE_BY_ZIP = {
+  '10118': 'Northeast',
+  '20500': 'Northeast',
+  '02201': 'Northeast',
+  '07030': 'Northeast',
+  '02903': 'Northeast',
+  '05401': 'Northeast',
+  '06103': 'Northeast',
+  '03301': 'Northeast',
+  '19801': 'Northeast',
+  '33133': 'South',
+  '30303': 'South',
+  '77002': 'South',
+  '70112': 'South',
+  '60606': 'Midwest',
+  '55415': 'Midwest',
+  '58102': 'Midwest',
+  '95014': 'West',
+  '90210': 'West',
+  '98109': 'West',
+  '97204': 'West',
+  '80202': 'West',
+  '89101': 'West',
+  '84111': 'West',
+  '59101': 'West',
+  '79843': 'Rural and remote',
+  '82414': 'Rural and remote',
+  '42223': 'ZIP shared by two states',
+  '73949': 'ZIP shared by two states',
+  '94105-1234': 'ZIP+4',
+  '02201-1234': 'ZIP+4',
+};
+
+const SHIPPING_ZONE_ORDER = [
+  'Northeast',
+  'South',
+  'Midwest',
+  'West',
+  'Rural and remote',
+  'ZIP shared by two states',
+  'ZIP+4',
+];
+
+const SHIPPING_UNAVAILABLE_ZONE = 'Shipping address not available';
+
+function isShippingValidationSuite(suite) {
+  const file = String((suite && (suite.file || suite.filePath)) || '').toLowerCase();
+  const title = String((suite && suite.title) || '').toLowerCase();
+  return file.includes('shippingvalidation')
+    || title.includes('shipping validation')
+    || title.includes('shipping not available');
+}
+
+function loadShippingOrders() {
+  const file = path.join(__dirname, '..', 'Cypress', 'fixtures', 'ShippingValidation.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.log(`⚠️ Could not read shipping scenarios: ${error.message}`);
+    return [];
+  }
+}
+
+function matchShippingOrder(test, orders) {
+  const title = titleWithoutProduct(`${test.title || ''}\n${test.fullTitle || ''}`);
+  const hits = (orders || []).filter((order) => order && order.id && title.includes(order.id));
+  hits.sort((left, right) => String(right.id).length - String(left.id).length);
+  return hits[0] || null;
+}
+
+function zipFromShippingTitle(title) {
+  const zips = String(title || '').match(/\b\d{5}(?:-\d{4})?\b/g) || [];
+  zips.sort((left, right) => right.length - left.length);
+  return zips[0] || '';
+}
+
+function shippingZoneFor(test, order) {
+  const title = titleWithoutProduct(`${test.title || ''} ${test.fullTitle || ''}`);
+  if ((order && order.shippingUnavailable) || /not available|po box/i.test(title)) {
+    return SHIPPING_UNAVAILABLE_ZONE;
+  }
+  if (order && SHIPPING_ZONE_BY_ZIP[String(order.zip)]) {
+    return SHIPPING_ZONE_BY_ZIP[String(order.zip)];
+  }
+  return SHIPPING_ZONE_BY_ZIP[zipFromShippingTitle(title)] || 'Other';
+}
+
+function formatShippingTestLine(test, suite, records) {
+  const emoji = test.state === 'passed' ? '✅' : test.state === 'failed' ? '❌' : '⏸️';
+  const duration = test.duration ? ` (${formatDuration(test.duration)})` : '';
+  const title = titleWithoutProduct(test.title || test.fullTitle || 'Unnamed Test');
+  let block = `${emoji} *${title}*${duration}\n`;
+  block += productLine(test, suite, records);
+  if (test.state === 'failed' && test.err) {
+    const errorMsg = test.err.message || test.err.estack || 'Unknown error';
+    block += `  └─ Error: ${errorMsg}\n`;
+  }
+  return block;
+}
+
+function groupShippingTests(suite) {
+  const tests = (suite && suite.tests) || [];
+  const orders = loadShippingOrders();
+  const groups = new Map();
+
+  tests.forEach((test, index) => {
+    const order = matchShippingOrder(test, orders);
+    const zone = shippingZoneFor(test, order);
+    if (!groups.has(zone)) groups.set(zone, []);
+    groups.get(zone).push({ test, index });
+  });
+
+  const zoneNames = [
+    ...SHIPPING_ZONE_ORDER.filter((zone) => groups.has(zone)),
+    ...[...groups.keys()].filter((zone) => zone !== SHIPPING_UNAVAILABLE_ZONE && !SHIPPING_ZONE_ORDER.includes(zone)),
+  ];
+  if (groups.has(SHIPPING_UNAVAILABLE_ZONE)) zoneNames.push(SHIPPING_UNAVAILABLE_ZONE);
+
+  return { groups, zoneNames };
+}
+
+function sortedShippingItems(items) {
+  return items.slice().sort((left, right) => {
+    const rank = (item) => (item.test.state === 'failed' ? 0 : item.test.state === 'pending' ? 1 : 2);
+    return rank(left) - rank(right) || left.index - right.index;
+  });
+}
+
+function shippingZoneCounts(items) {
+  const count = (state) => items.filter((item) => item.test.state === state).length;
+  return { passed: count('passed'), failed: count('failed'), pending: count('pending') };
+}
+
+/**
+ * Short zone index for the main Slack message.
+ * Each zone's addresses are attached below, so a zone is opened only to inspect its cases.
+ */
+function formatShippingValidationBreakdown(suite) {
+  const { groups, zoneNames } = groupShippingTests(suite);
+  const deliveryZones = zoneNames.filter((zone) => zone !== SHIPPING_UNAVAILABLE_ZONE);
+  const deliveryFailed = deliveryZones.reduce(
+    (total, zone) => total + shippingZoneCounts(groups.get(zone)).failed,
+    0
+  );
+
+  let block = 'Addresses are grouped by zone. Open a zone below to see each address.\n';
+  block += deliveryFailed > 0
+    ? `❌ ${deliveryFailed} delivery ${deliveryFailed === 1 ? 'address' : 'addresses'} failed.\n`
+    : '✅ No delivery address failed.\n';
+
+  zoneNames.forEach((zone) => {
+    const counts = shippingZoneCounts(groups.get(zone));
+    const emoji = zone === SHIPPING_UNAVAILABLE_ZONE
+      ? '📦'
+      : counts.failed > 0 ? '❌' : counts.passed > 0 ? '✅' : '⏸️';
+    block += `${emoji} *${zone}* — ✅ ${counts.passed} | ❌ ${counts.failed} | ⏸️ ${counts.pending}\n`;
+    if (counts.failed > 0) {
+      sortedShippingItems(groups.get(zone))
+        .filter((item) => item.test.state === 'failed')
+        .forEach((item) => {
+          const title = titleWithoutProduct(item.test.title || item.test.fullTitle || 'Unnamed Test');
+          block += `  └─ ${title}\n`;
+        });
+    }
+  });
+
+  return block;
+}
+
+/**
+ * One Slack attachment per zone. The message collapses the address list until it is opened.
+ * The PO Box check is its own attachment, after the delivery zones.
+ */
+function formatShippingZoneAttachments(suite, records) {
+  const { groups, zoneNames } = groupShippingTests(suite);
+
+  return zoneNames.map((zone) => {
+    const items = sortedShippingItems(groups.get(zone));
+    const counts = shippingZoneCounts(items);
+    const unavailable = zone === SHIPPING_UNAVAILABLE_ZONE;
+    const emoji = unavailable ? '📦' : counts.failed > 0 ? '❌' : counts.passed > 0 ? '✅' : '⏸️';
+    let text = '';
+    if (unavailable) {
+      text += 'Separate check. This address is expected to be refused, and the order is not placed.\n';
+    }
+    items.forEach((item) => {
+      text += formatShippingTestLine(item.test, suite, records);
+    });
+
+    return {
+      color: counts.failed > 0 ? colors.failure : unavailable ? colors.warning : colors.success,
+      title: `${emoji} ${zone} — ✅ ${counts.passed} | ❌ ${counts.failed} | ⏸️ ${counts.pending}`,
+      text: text.trim(),
+      mrkdwn_in: ['text'],
+    };
+  });
+}
+
+/**
  * Format test details for Slack
  * Shows all tests and subtests with their status
  */
@@ -1389,6 +1593,12 @@ function formatTestDetails(suites, results = null) {
     // Cribs Checkout lists one English title per scenario, without the step list.
     if (isCribsCheckoutSuite(suite)) {
       details += formatCribsCheckoutBreakdown(suite, selectedProducts);
+      return;
+    }
+
+    // Shipping lists each address under its zone. The PO Box check stays in its own block.
+    if (isShippingValidationSuite(suite)) {
+      details += formatShippingValidationBreakdown(suite, selectedProducts);
       return;
     }
     
@@ -1648,6 +1858,14 @@ function createSlackMessage(summary, results) {
     }
   ];
 
+  // Shipping zones are separate attachments so each address list can be opened on its own.
+  // The PO Box check is the last of those attachments.
+  suites.filter(isShippingValidationSuite).forEach((suite) => {
+    formatShippingZoneAttachments(suite, loadSelectedProducts()).forEach((attachment) => {
+      attachments.push(attachment);
+    });
+  });
+
   // Add links attachment
   attachments.push({
       color: colors.info,
@@ -1889,5 +2107,12 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main, createSlackMessage, getTestSummary, parseCypressResults };
+module.exports = {
+  main,
+  createSlackMessage,
+  getTestSummary,
+  parseCypressResults,
+  formatShippingValidationBreakdown,
+  formatShippingZoneAttachments,
+};
 
