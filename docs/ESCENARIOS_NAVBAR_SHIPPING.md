@@ -6,7 +6,7 @@ Each row in `SHIPPING VALIDATION` opens the product page, confirms a variant can
 
 Nursery Sets, Kids' Bedroom Sets, and Personalized products are excluded. A convertible crib, dresser, bed, or chair is still a single product. A personalized chair, bed, or gift is not used as the scenario product or as the in-stock replacement.
 
-Expected result for `SHIPPING VALIDATION`: one or more shipping methods are shown. The Slack report lists the product in the order and the full ship-to address.
+Expected result for `SHIPPING VALIDATION`: one or more shipping methods are shown. The Slack report groups the addresses by zone. Each zone is its own section, opened to see the product, the ship-to address, and any failure. The PO Box check is a separate section.
 
 ## Northeast and metro
 
