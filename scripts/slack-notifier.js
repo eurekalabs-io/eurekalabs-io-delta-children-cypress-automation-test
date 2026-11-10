@@ -1560,12 +1560,7 @@ function formatTestDetails(suites, results = null) {
   const allFiles = [...new Set([...testFiles, ...fallbackFiles])].sort();
   
   if (allFiles.length > 0) {
-    testFiles = allFiles;
-    details += '*📁 Test Files Executed:*\n';
-    testFiles.forEach(file => {
-      details += `  • ${file}\n`;
-    });
-    details += '\n';
+    details += '*📁 Test Files Executed:*\n\n';
   }
   
   suites.forEach((suite, index) => {
@@ -1706,13 +1701,48 @@ function formatTestDetails(suites, results = null) {
 }
 
 /**
+ * Readable execution summary, placed directly under Test Files Executed.
+ * One field per line so Slack does not collapse the values into a single row.
+ */
+function formatExecutionReport({ emoji, status, passRate, summary, hasResults, testFiles, branch, commitUrl }) {
+  const lines = [
+    `*📊 ${GITHUB_WORKFLOW} - Test Execution Report*`,
+    `*Status:* ${emoji} ${status}`,
+  ];
+
+  if (CYPRESS_RESULT || CYPRESS_STATUS) {
+    const cypressResult = CYPRESS_RESULT || (CYPRESS_STATUS === 'success' ? 'PASSED' : CYPRESS_STATUS === 'failure' ? 'FAILED' : 'UNKNOWN');
+    const cypressEmoji = cypressResult === 'PASSED' ? '✅' : cypressResult === 'FAILED' ? '❌' : '⚠️';
+    lines.push(`*Cypress Execution:* ${cypressEmoji} ${cypressResult}`);
+  }
+
+  if (testFiles.length > 0) {
+    lines.push(`*Test Files:* ${testFiles.join(', ')}`);
+  }
+
+  if (hasResults) {
+    lines.push(`*Total Tests:* ${summary.total}`);
+    lines.push(`*Pass Rate:* ${passRate}%`);
+    lines.push(`*Passed:* ✅ ${summary.passed}`);
+    lines.push(`*Failed:* ❌ ${summary.failed}`);
+    lines.push(`*Duration:* ⏱️ ${formatDuration(summary.duration)}`);
+    lines.push(`*Branch:* 🌿 ${branch}`);
+  }
+
+  if (GITHUB_SHA) {
+    lines.push(`*Commit:* <${commitUrl}|${GITHUB_SHA.substring(0, 7)}>`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Create Slack message payload with detailed report
  */
 function createSlackMessage(summary, results) {
   // If no results found, check GitHub Actions job status
   const hasResults = summary.total > 0;
   const isSuccess = hasResults ? summary.failed === 0 : true; // Assume success if no results
-  const color = isSuccess ? colors.success : colors.failure;
   const emoji = isSuccess ? '✅' : '❌';
   const status = hasResults 
     ? (isSuccess ? 'PASSED' : 'FAILED')
@@ -1760,7 +1790,23 @@ function createSlackMessage(summary, results) {
     console.log(`⚠️ Files in e2e directory but not found in report: ${missingFiles.join(', ')}`);
   }
   
-  const testDetails = formatTestDetails(suites, results);
+  let testDetails = formatTestDetails(suites, results);
+  const executionReport = formatExecutionReport({
+    emoji,
+    status,
+    passRate,
+    summary,
+    hasResults,
+    testFiles,
+    branch,
+    commitUrl,
+  });
+  const filesHeading = '*📁 Test Files Executed:*\n';
+  if (testDetails.includes(filesHeading)) {
+    testDetails = testDetails.replace(filesHeading, `${filesHeading}\n${executionReport}\n`);
+  } else {
+    testDetails = `${filesHeading}\n${executionReport}\n${testDetails}`;
+  }
   
   // Debug logging
   console.log(`📋 Found ${suites.length} test suite(s)`);
@@ -1770,93 +1816,8 @@ function createSlackMessage(summary, results) {
   console.log(`📝 Test details length: ${testDetails.length} characters`);
   console.log(`📁 Test files executed: ${testFiles.join(', ') || 'NONE FOUND'}`);
   
-  // Create main attachment with summary
-  const fields = [
-    {
-      title: 'Status',
-      value: `${emoji} *${status}*`,
-      short: true
-    }
-  ];
-  
-  // Add Cypress execution result if available
-  if (CYPRESS_RESULT || CYPRESS_STATUS) {
-    const cypressResult = CYPRESS_RESULT || (CYPRESS_STATUS === 'success' ? 'PASSED' : CYPRESS_STATUS === 'failure' ? 'FAILED' : 'UNKNOWN');
-    const cypressEmoji = cypressResult === 'PASSED' ? '✅' : cypressResult === 'FAILED' ? '❌' : '⚠️';
-    fields.push({
-      title: 'Cypress Execution',
-      value: `${cypressEmoji} *${cypressResult}*`,
-      short: true
-    });
-  }
-  
-  // Add test files if available
-  if (testFiles.length > 0) {
-    const filesValue = testFiles.join(', ');
-    fields.push({
-      title: 'Test Files',
-      value: `*${filesValue}*`,
-      short: false
-    });
-  }
-
-  // Only add test details if we have results
-  if (hasResults) {
-    fields.push(
-      {
-        title: 'Total Tests',
-        value: `*${summary.total}*`,
-        short: true
-      },
-      {
-        title: 'Pass Rate',
-        value: `*${passRate}%*`,
-        short: true
-      },
-      {
-        title: 'Passed',
-        value: `✅ *${summary.passed}*`,
-        short: true
-      },
-      {
-        title: 'Failed',
-        value: `❌ *${summary.failed}*`,
-        short: true
-      },
-      {
-        title: 'Duration',
-        value: `⏱️ *${formatDuration(summary.duration)}*`,
-        short: true
-      },
-      {
-        title: 'Branch',
-        value: `🌿 *${branch}*`,
-        short: true
-      }
-    );
-  }
-
-  // Add commit info if available
-  if (GITHUB_SHA) {
-    fields.push({
-      title: 'Commit',
-      value: `<${commitUrl}|${GITHUB_SHA.substring(0, 7)}>`,
-      short: true
-    });
-  }
-
-  // Create main attachment
-  const attachments = [
-    {
-      color: color,
-      title: `📊 ${GITHUB_WORKFLOW} - Test Execution Report`,
-      title_link: runUrl,
-      fields: fields,
-      footer: `Triggered by ${GITHUB_ACTOR}`,
-      footer_icon: 'https://github.githubassets.com/favicons/favicon.png',
-      ts: Math.floor(Date.now() / 1000)
-    }
-  ];
+  // The execution summary is written under Test Files Executed, in the message text.
+  const attachments = [];
 
   // Shipping zones are separate attachments so each address list can be opened on its own.
   // The PO Box check is the last of those attachments.
